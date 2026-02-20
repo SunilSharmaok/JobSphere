@@ -1,0 +1,73 @@
+<!-- =============================================
+     PASTE THIS SECTION 1 somewhere in your page
+     where you want the media gallery to appear
+     (e.g. after the jobs section)
+     ============================================= -->
+
+<section style="padding: 80px 0; background: var(--light);">
+    <div class="container">
+        <div class="section-header" style="text-align:center; margin-bottom:40px;">
+            <h2>Media Gallery</h2>
+            <p style="color:var(--gray);">Photos and videos shared by our community</p>
+        </div>
+        <div id="media-gallery" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:24px;">
+            <!-- Media cards load here from Firebase -->
+        </div>
+    </div>
+</section>
+
+
+<!-- =============================================
+     PASTE THIS SECTION 2 before </body>
+     This is the Upload Modal
+     ============================================= -->
+
+<div class="modal-wrap" id="uploadModal">
+    <div class="modal-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+            <h3 style="font-size:1.5rem;">Upload Photo or Video</h3>
+            <button onclick="closeModal('uploadModal')" style="background:none;border:none;font-size:1.8rem;color:var(--gray);cursor:pointer;">&times;</button>
+        </div>
+
+        <form onsubmit="handleMediaUpload(event)" style="display:grid; gap:20px;">
+
+            <!-- File picker -->
+            <div>
+                <label style="display:block; margin-bottom:8px; color:var(--gray); font-size:0.9rem;">
+                    Select Photo or Video
+                </label>
+                <input type="file" id="mediaFile" accept="image/*,video/*" required
+                    style="padding:14px; border:1px solid rgba(0,0,0,0.1); border-radius:12px; width:100%; font-size:1rem; cursor:pointer;">
+                <small style="color:var(--gray); margin-top:6px; display:block;">
+                    Images: max 10MB &nbsp;|&nbsp; Videos: max 50MB
+                </small>
+            </div>
+
+            <!-- Caption -->
+            <div>
+                <label style="display:block; margin-bottom:8px; color:var(--gray); font-size:0.9rem;">
+                    Caption (optional)
+                </label>
+                <input type="text" id="mediaCaption" placeholder="Add a caption..."
+                    style="padding:14px; border:1px solid rgba(0,0,0,0.1); border-radius:12px; width:100%; font-size:1rem;">
+            </div>
+
+            <!-- Progress bar (hidden until upload starts) -->
+            <div id="uploadProgress" style="display:none;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <small style="color:var(--gray);">Uploading...</small>
+                    <small id="uploadProgressText" style="color:var(--primary); font-weight:600;">0%</small>
+                </div>
+                <div style="background:#e2e8f0; border-radius:99px; height:8px; overflow:hidden;">
+                    <div id="uploadProgressFill" 
+                         style="height:100%; width:0%; background:var(--gradient-primary); border-radius:99px; transition:width 0.3s ease;">
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-gradient" style="width:100%; padding:16px; margin-top:10px;">
+                Upload
+            </button>
+        </form>
+    </div>
+</div>
