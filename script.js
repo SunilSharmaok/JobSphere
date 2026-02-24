@@ -37,7 +37,7 @@ const db = getFirestore(app);
 
 // ===== Role Management =====
 // Role is stored in localStorage for quick access and in Firestore permanently
-let currentRole = localStorage.getItem('jobsphere_role') || null;
+let currentRole = null;
 
 // Called when user clicks "I'm a Job Seeker" or "I'm a Company"
 window.selectRole = function(role) {
@@ -76,9 +76,9 @@ function applyRoleUI(role) {
 
 // ===== On Page Load =====
 // If role already chosen before, skip role screen
-if (currentRole) {
-    showMainSite();
-}
+// if (currentRole) {
+//     showMainSite();
+// }
 
 // ===== Auth State =====
 onAuthStateChanged(auth, (user) => {
