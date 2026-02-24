@@ -1,33 +1,26 @@
-// Firebase Configuration
+// ===== Firebase Imports =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { 
-    getAuth, 
-    signInWithPopup, 
-    GoogleAuthProvider, 
-    signOut, 
-    onAuthStateChanged 
+import {
+    getAuth,
+    signInWithPopup,
+    GoogleAuthProvider,
+    signOut,
+    onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-// Firestore
 import {
     getFirestore,
     collection,
     addDoc,
     getDocs,
+    getDoc,
+    setDoc,
+    doc,
     query,
     orderBy,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// ✅ NEW: Import Firebase Storage
-import {
-    getStorage,
-    ref,
-    uploadBytesResumable,
-    getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-
-// Your web app's Firebase configuration
+// ===== Firebase Config =====
 const firebaseConfig = {
     apiKey: "AIzaSyAD3xg3SZLQyv-Rf3rb4vw6-HVsZuZRD3E",
     authDomain: "jobsphere-ab925.firebaseapp.com",
@@ -37,25 +30,163 @@ const firebaseConfig = {
     appId: "1:757724057808:web:d46c8fbb78409abfef4ed5"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
-// ✅ NEW: Initialize Storage
-const storage = getStorage(app);
+// ===== Role Management =====
+// Role is stored in localStorage for quick access and in Firestore permanently
+let currentRole = localStorage.getItem('jobsphere_role') || null;
 
-// Initialize AOS
-AOS.init({
-    duration: 1000,
-    once: true,
-    offset: 50
+// Called when user clicks "I'm a Job Seeker" or "I'm a Company"
+window.selectRole = function(role) {
+    currentRole = role;
+    localStorage.setItem('jobsphere_role', role);
+    showMainSite();
+}
+
+function showMainSite() {
+    document.getElementById('role-screen').style.display = 'none';
+    document.getElementById('main-site').style.display = 'block';
+    applyRoleUI(currentRole);
+    AOS.init({ duration: 1000, once: true, offset: 50 });
+    loadJobsFromFirestore();
+    loadMediaGallery();
+}
+
+// Apply role-based UI changes
+function applyRoleUI(role) {
+    const postJobBtn = document.getElementById('navbar-post-job-btn');
+    const navPostJob = document.getElementById('nav-post-job');
+    const applyBtns = document.querySelectorAll('.apply-btn');
+
+    if (role === 'company') {
+        // Company sees Post Job button, no Apply buttons
+        if (postJobBtn) postJobBtn.style.display = 'inline-flex';
+        if (navPostJob) navPostJob.style.display = 'inline-block';
+        applyBtns.forEach(btn => btn.style.display = 'none');
+    } else {
+        // User sees Apply buttons, no Post Job
+        if (postJobBtn) postJobBtn.style.display = 'none';
+        if (navPostJob) navPostJob.style.display = 'none';
+        applyBtns.forEach(btn => btn.style.display = 'inline-flex');
+    }
+}
+
+// ===== On Page Load =====
+// If role already chosen before, skip role screen
+if (currentRole) {
+    showMainSite();
+}
+
+// ===== Auth State =====
+onAuthStateChanged(auth, (user) => {
+    if (currentRole) updateUIForUser(user);
 });
 
-// Navbar scroll effect
-let navbar = document.getElementById('navbar');
+// ===== Google Sign In =====
+window.googleSignIn = async function() {
+    try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // Save user to Firestore with their role (use setDoc so we don't duplicate)
+        await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            name: user.displayName,
+            email: user.email,
+            photo: user.photoURL,
+            role: currentRole,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        showNotification(`Welcome ${user.displayName || 'back'}!`, 'success');
+        updateUIForUser(user);
+        closeModal('loginModal');
+
+    } catch (error) {
+        console.error('Sign-in error:', error);
+        if (error.code === 'auth/unauthorized-domain') {
+            showNotification(`Please add "${window.location.hostname}" to Firebase authorized domains`, 'error');
+        } else {
+            showNotification(error.message, 'error');
+        }
+    }
+}
+
+// ===== Sign Out =====
+window.googleSignOut = async function() {
+    try {
+        await signOut(auth);
+        localStorage.removeItem('jobsphere_role');
+        currentRole = null;
+        document.getElementById('main-site').style.display = 'none';
+        document.getElementById('role-screen').style.display = 'flex';
+        showNotification('Signed out successfully', 'success');
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+// ===== Switch Role (go back to role screen without signing out) =====
+window.switchRole = function() {
+    localStorage.removeItem('jobsphere_role');
+    currentRole = null;
+    document.getElementById('main-site').style.display = 'none';
+    document.getElementById('role-screen').style.display = 'flex';
+}
+
+// ===== Update Navbar UI =====
+function updateUIForUser(user) {
+    const authButtons = document.querySelector('.auth-buttons');
+    if (!authButtons) return;
+
+    if (user) {
+        const photoURL = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=6366f1&color=fff&size=128`;
+        const displayName = user.displayName || 'User';
+        const email = user.email || '';
+        const roleBadge = currentRole === 'company'
+            ? `<span class="role-badge company">Company</span>`
+            : `<span class="role-badge user">Job Seeker</span>`;
+
+        // Company gets Upload Media + Post Job in dropdown
+        // User gets Upload Media only
+        const dropdownItems = currentRole === 'company'
+            ? `<a href="#" onclick="openModal('postJobModal')"><i class="ph ph-briefcase" style="margin-right:8px;"></i>Post a Job</a>
+               <a href="#" onclick="openModal('uploadModal')"><i class="ph ph-image" style="margin-right:8px;"></i>Upload Media</a>`
+            : `<a href="#" onclick="openModal('uploadModal')"><i class="ph ph-image" style="margin-right:8px;"></i>Upload Media</a>`;
+
+        authButtons.innerHTML = `
+            <div class="user-menu">
+                ${roleBadge}
+                <img src="${photoURL}" alt="${displayName}" class="user-avatar">
+                <div class="user-dropdown">
+                    <div class="user-info">
+                        <img src="${photoURL}" alt="${displayName}">
+                        <strong>${displayName}</strong>
+                        <small>${email}</small>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    ${dropdownItems}
+                    <div class="dropdown-divider"></div>
+                    <a href="#" onclick="googleSignOut()"><i class="ph ph-sign-out" style="margin-right:8px;"></i>Sign Out</a>
+                </div>
+            </div>
+            ${currentRole === 'company' ? `<button class="btn btn-gradient" onclick="openModal('postJobModal')">Post Job</button>` : ''}
+        `;
+    } else {
+        authButtons.innerHTML = `
+            <button class="btn btn-outline login-btn" onclick="openModal('loginModal')">Sign In</button>
+            ${currentRole === 'company' ? `<button class="btn btn-gradient" onclick="openModal('postJobModal')">Post Job</button>` : ''}
+        `;
+    }
+}
+
+// ===== Navbar Scroll =====
 window.addEventListener('scroll', () => {
+    const navbar = document.getElementById('navbar');
+    if (!navbar) return;
     if (window.scrollY > 50) {
         navbar.style.padding = '12px 0';
         navbar.style.backdropFilter = 'blur(25px)';
@@ -68,235 +199,7 @@ window.addEventListener('scroll', () => {
     }
 });
 
-// Check authentication state on page load
-onAuthStateChanged(auth, (user) => {
-    updateUIForUser(user);
-});
-
-// Google Sign In
-window.googleSignIn = async function() {
-    try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-
-        await addDoc(collection(db, "users"), {
-            uid: user.uid,
-            name: user.displayName,
-            email: user.email,
-            photo: user.photoURL,
-            createdAt: serverTimestamp()
-        });
-
-        showNotification(`Welcome ${user.displayName || 'back'}!`, 'success');
-        updateUIForUser(user);
-        closeModal('loginModal');
-        closeModal('signupModal');
-    } catch (error) {
-        console.error('Sign-in error:', error);
-        if (error.code === 'auth/unauthorized-domain') {
-            showNotification(`Please add "${window.location.hostname}" to Firebase authorized domains`, 'error');
-        } else {
-            showNotification(error.message, 'error');
-        }
-    }
-}
-
-// Sign Out
-window.googleSignOut = async function() {
-    try {
-        await signOut(auth);
-        showNotification('Signed out successfully', 'success');
-        updateUIForUser(null);
-    } catch (error) {
-        console.error('Sign-out error:', error);
-        showNotification(error.message, 'error');
-    }
-}
-
-// Update UI based on auth state
-function updateUIForUser(user) {
-    const authButtons = document.querySelector('.auth-buttons');
-    if (!authButtons) return;
-
-    if (user) {
-        const photoURL = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=6366f1&color=fff&size=128`;
-        const displayName = user.displayName || 'User';
-        const email = user.email || '';
-        
-        authButtons.innerHTML = `
-            <div class="user-menu">
-                <img src="${photoURL}" alt="${displayName}" class="user-avatar">
-                <div class="user-dropdown">
-                    <div class="user-info">
-                        <img src="${photoURL}" alt="${displayName}">
-                        <strong>${displayName}</strong>
-                        <small>${email}</small>
-                    </div>
-                    <div class="dropdown-divider"></div>
-                    <a href="#" onclick="openModal('uploadModal')">Upload Media</a>
-                    <a href="#" onclick="googleSignOut()">Sign Out</a>
-                </div>
-            </div>
-            <button class="btn btn-gradient" onclick="openModal('postJobModal')">Post Job</button>
-        `;
-    } else {
-        authButtons.innerHTML = `
-            <button class="btn btn-outline login-btn" onclick="openModal('loginModal')">Sign In</button>
-            <button class="btn btn-gradient" onclick="openModal('postJobModal')">Post Job</button>
-        `;
-    }
-}
-
-// ✅ NEW: Upload photo or video to Firebase Storage
-window.handleMediaUpload = async function(e) {
-    e.preventDefault();
-    const user = auth.currentUser;
-
-    if (!user) {
-        showNotification('Please sign in to upload files', 'info');
-        return;
-    }
-
-    const fileInput = document.getElementById('mediaFile');
-    const caption = document.getElementById('mediaCaption').value;
-    const file = fileInput.files[0];
-
-    if (!file) {
-        showNotification('Please select a file', 'warning');
-        return;
-    }
-
-    const isImage = file.type.startsWith('image/');
-    const isVideo = file.type.startsWith('video/');
-
-    if (!isImage && !isVideo) {
-        showNotification('Only images and videos are allowed', 'error');
-        return;
-    }
-
-    // Max 10MB for images, 50MB for videos
-    const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-        showNotification(`File too large. Max: ${isVideo ? '50MB' : '10MB'}`, 'error');
-        return;
-    }
-
-    const btn = e.target.querySelector('button[type="submit"]');
-    const progressBar = document.getElementById('uploadProgress');
-    const progressFill = document.getElementById('uploadProgressFill');
-    const progressText = document.getElementById('uploadProgressText');
-
-    btn.disabled = true;
-    btn.innerText = 'Uploading...';
-    if (progressBar) progressBar.style.display = 'block';
-
-    try {
-        // Save to: media/userId/timestamp_filename
-        const filePath = `media/${user.uid}/${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, filePath);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        uploadTask.on('state_changed',
-            (snapshot) => {
-                // Show upload progress
-                const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                if (progressFill) progressFill.style.width = percent + '%';
-                if (progressText) progressText.innerText = percent + '%';
-            },
-            (error) => {
-                console.error('Upload error:', error);
-                showNotification('Upload failed. Try again.', 'error');
-                btn.disabled = false;
-                btn.innerText = 'Upload';
-                if (progressBar) progressBar.style.display = 'none';
-            },
-            async () => {
-                // Get the public URL of the uploaded file
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-                // Save file metadata to Firestore
-                await addDoc(collection(db, "media"), {
-                    url: downloadURL,
-                    type: isVideo ? 'video' : 'image',
-                    caption: caption,
-                    fileName: file.name,
-                    uploadedBy: user.uid,
-                    uploaderName: user.displayName,
-                    uploaderPhoto: user.photoURL,
-                    uploadedAt: serverTimestamp()
-                });
-
-                showNotification('Upload successful!', 'success');
-                closeModal('uploadModal');
-                e.target.reset();
-                if (progressBar) progressBar.style.display = 'none';
-                if (progressFill) progressFill.style.width = '0%';
-                btn.disabled = false;
-                btn.innerText = 'Upload';
-                loadMediaGallery();
-            }
-        );
-
-    } catch (error) {
-        console.error('Upload error:', error);
-        showNotification('Upload failed. Try again.', 'error');
-        btn.disabled = false;
-        btn.innerText = 'Upload';
-        if (progressBar) progressBar.style.display = 'none';
-    }
-}
-
-// ✅ NEW: Load and display uploaded media in the gallery
-async function loadMediaGallery() {
-    const gallery = document.getElementById('media-gallery');
-    if (!gallery) return;
-
-    try {
-        const q = query(collection(db, "media"), orderBy("uploadedAt", "desc"));
-        const snapshot = await getDocs(q);
-
-        if (snapshot.empty) {
-            gallery.innerHTML = '<p style="color:var(--gray);text-align:center;grid-column:1/-1;">No media uploaded yet.</p>';
-            return;
-        }
-
-        gallery.innerHTML = '';
-        snapshot.forEach(doc => {
-            const media = doc.data();
-            if (media.type === 'image') {
-                gallery.innerHTML += `
-                    <div class="media-card" style="border-radius:16px;overflow:hidden;box-shadow:var(--shadow-md);">
-                        <img src="${media.url}" alt="${media.caption || ''}" 
-                             style="width:100%;height:200px;object-fit:cover;display:block;">
-                        <div style="padding:12px;">
-                            <p style="font-size:0.9rem;color:var(--dark);margin-bottom:4px;">${media.caption || ''}</p>
-                            <small style="color:var(--gray);">by ${media.uploaderName}</small>
-                        </div>
-                    </div>
-                `;
-            } else if (media.type === 'video') {
-                gallery.innerHTML += `
-                    <div class="media-card" style="border-radius:16px;overflow:hidden;box-shadow:var(--shadow-md);">
-                        <video controls style="width:100%;height:200px;object-fit:cover;display:block;background:#000;">
-                            <source src="${media.url}">
-                        </video>
-                        <div style="padding:12px;">
-                            <p style="font-size:0.9rem;color:var(--dark);margin-bottom:4px;">${media.caption || ''}</p>
-                            <small style="color:var(--gray);">by ${media.uploaderName}</small>
-                        </div>
-                    </div>
-                `;
-            }
-        });
-
-    } catch (error) {
-        console.error('Error loading media:', error);
-    }
-}
-
-loadMediaGallery();
-
-// Modal functions
+// ===== Modal Functions =====
 window.openModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -320,7 +223,7 @@ window.onclick = function(event) {
     }
 }
 
-// Job search filter
+// ===== Job Search Filter =====
 window.filterJobs = function() {
     const input = document.getElementById('jobSearch').value.toLowerCase();
     const cards = document.querySelectorAll('.job-card');
@@ -332,14 +235,20 @@ window.filterJobs = function() {
     document.getElementById('jobs').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Job application
+// ===== Apply for Job (users only) =====
 window.openApplyModal = function(title) {
+    if (currentRole === 'company') {
+        showNotification('Companies cannot apply for jobs', 'info');
+        return;
+    }
+
     const user = auth.currentUser;
     if (!user) {
         showNotification('Please sign in to apply for jobs', 'info');
         openModal('loginModal');
         return;
     }
+
     const modalTitle = document.getElementById('modalTitle');
     const nameInput = document.getElementById('applicantName');
     const emailInput = document.getElementById('applicantEmail');
@@ -371,6 +280,7 @@ window.handleApply = async function(e) {
 
         btn.innerHTML = '<i class="ph ph-check-circle"></i> Application Sent!';
         btn.style.background = 'var(--success)';
+
         setTimeout(() => {
             closeModal('applyModal');
             e.target.reset();
@@ -382,15 +292,17 @@ window.handleApply = async function(e) {
 
     } catch (error) {
         console.error('Application error:', error);
-        showNotification('Failed to submit application. Try again.', 'error');
+        showNotification('Failed to submit. Try again.', 'error');
         btn.innerText = original;
         btn.disabled = false;
     }
 }
 
+// ===== Post Job (companies only) =====
 window.handleJobPost = async function(e) {
     e.preventDefault();
     const user = auth.currentUser;
+
     if (!user) {
         showNotification('Please sign in to post a job', 'info');
         closeModal('postJobModal');
@@ -398,9 +310,13 @@ window.handleJobPost = async function(e) {
         return;
     }
 
+    if (currentRole !== 'company') {
+        showNotification('Only companies can post jobs', 'error');
+        return;
+    }
+
     const inputs = e.target.querySelectorAll('input, textarea');
     const btn = e.target.querySelector('button[type="submit"]');
-
     btn.innerText = 'Posting...';
     btn.disabled = true;
 
@@ -415,10 +331,12 @@ window.handleJobPost = async function(e) {
             postedByName: user.displayName,
             postedAt: serverTimestamp()
         });
+
         showNotification('Job posted successfully!', 'success');
         closeModal('postJobModal');
         e.target.reset();
         loadJobsFromFirestore();
+
     } catch (error) {
         console.error('Job post error:', error);
         showNotification('Failed to post job. Try again.', 'error');
@@ -428,51 +346,118 @@ window.handleJobPost = async function(e) {
     }
 }
 
+// ===== Load Jobs from Firestore =====
 async function loadJobsFromFirestore() {
-    const jobsContainer = document.getElementById('job-list-container');
-    if (!jobsContainer) return;
+    const container = document.getElementById('job-list-container');
+    if (!container) return;
 
     try {
         const q = query(collection(db, "jobs"), orderBy("postedAt", "desc"));
         const snapshot = await getDocs(q);
         if (snapshot.empty) return;
 
-        jobsContainer.innerHTML = '';
-        snapshot.forEach(doc => {
-            const job = doc.data();
-            jobsContainer.innerHTML += `
+        container.innerHTML = '';
+        snapshot.forEach(docSnap => {
+            const job = docSnap.data();
+            // Show Apply button only for users
+            const applyBtn = currentRole === 'company'
+                ? ''
+                : `<button class="btn btn-gradient apply-btn" onclick="openApplyModal('${job.title}')">Apply Now</button>`;
+
+            container.innerHTML += `
                 <div class="job-card" data-title="${job.title}">
-                    <div class="job-header">
-                        <div class="company-logo"><i class="ph-fill ph-buildings"></i></div>
-                        <div>
-                            <h4>${job.title}</h4>
-                            <p>${job.company}</p>
+                    <div class="company-logo">
+                        <i class="ph-fill ph-buildings"></i>
+                    </div>
+                    <div class="job-main">
+                        <h3>${job.title}</h3>
+                        <div class="job-tags">
+                            <span><i class="ph-fill ph-map-pin"></i> ${job.location}</span>
+                            <span><i class="ph-fill ph-buildings"></i> ${job.company}</span>
                         </div>
+                        <p style="color: var(--gray); margin-top: 10px; font-size: 0.95rem;">${job.description.substring(0, 120)}...</p>
                     </div>
-                    <div class="job-tags">
-                        <span class="tag">${job.location}</span>
-                        <span class="tag">${job.salary}</span>
+                    <div class="job-right">
+                        <span class="salary-range">${job.salary}</span>
+                        ${applyBtn}
                     </div>
-                    <p style="color:var(--gray);font-size:0.9rem;margin:10px 0;">${job.description.substring(0, 100)}...</p>
-                    <button class="btn btn-outline" onclick="openApplyModal('${job.title}')">Apply Now</button>
                 </div>
             `;
         });
+
     } catch (error) {
         console.error('Error loading jobs:', error);
     }
 }
 
-loadJobsFromFirestore();
+// ===== Media Upload (Cloudinary — add credentials when ready) =====
+window.handleMediaUpload = async function(e) {
+    e.preventDefault();
+    const user = auth.currentUser;
 
-// Notification system
+    if (!user) {
+        showNotification('Please sign in to upload', 'info');
+        return;
+    }
+
+    showNotification('Media upload coming soon via Cloudinary!', 'info');
+    // TODO: Add Cloudinary credentials here when ready
+}
+
+// ===== Load Media Gallery =====
+async function loadMediaGallery() {
+    const gallery = document.getElementById('media-gallery');
+    if (!gallery) return;
+
+    try {
+        const q = query(collection(db, "media"), orderBy("uploadedAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            gallery.innerHTML = '<p style="color:var(--gray);text-align:center;grid-column:1/-1;">No media uploaded yet.</p>';
+            return;
+        }
+
+        gallery.innerHTML = '';
+        snapshot.forEach(docSnap => {
+            const media = docSnap.data();
+            if (media.type === 'image') {
+                gallery.innerHTML += `
+                    <div style="border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+                        <img src="${media.url}" alt="${media.caption || ''}" style="width:100%;height:200px;object-fit:cover;display:block;">
+                        <div style="padding:12px;">
+                            <p style="font-size:0.9rem;color:var(--dark);margin-bottom:4px;">${media.caption || ''}</p>
+                            <small style="color:var(--gray);">by ${media.uploaderName}</small>
+                        </div>
+                    </div>`;
+            } else if (media.type === 'video') {
+                gallery.innerHTML += `
+                    <div style="border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+                        <video controls style="width:100%;height:200px;object-fit:cover;display:block;background:#000;">
+                            <source src="${media.url}">
+                        </video>
+                        <div style="padding:12px;">
+                            <p style="font-size:0.9rem;color:var(--dark);margin-bottom:4px;">${media.caption || ''}</p>
+                            <small style="color:var(--gray);">by ${media.uploaderName}</small>
+                        </div>
+                    </div>`;
+            }
+        });
+
+    } catch (error) {
+        console.error('Error loading media:', error);
+    }
+}
+
+// ===== Notification System =====
 function showNotification(message, type = 'success') {
     const colors = { success: '#10b981', error: '#ef4444', info: '#3b82f6', warning: '#f59e0b' };
     const notification = document.createElement('div');
     notification.style.cssText = `
         position:fixed;top:100px;right:30px;background:${colors[type]};color:white;
-        padding:15px 25px;border-radius:12px;box-shadow:var(--shadow-xl);z-index:3000;
-        animation:slideIn 0.3s ease;font-weight:500;display:flex;align-items:center;gap:10px;
+        padding:15px 25px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.15);
+        z-index:9999;font-weight:500;display:flex;align-items:center;gap:10px;
+        animation:slideIn 0.3s ease;
     `;
     const icon = document.createElement('i');
     icon.className = `ph ph-${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : type === 'info' ? 'info' : 'warning'}`;
@@ -480,33 +465,41 @@ function showNotification(message, type = 'success') {
     notification.appendChild(document.createTextNode(message));
     document.body.appendChild(notification);
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s ease';
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
 
-// Counter animation
-const counters = document.querySelectorAll('.stat-item h3');
-counters.forEach(counter => {
-    const target = parseInt(counter.innerText);
-    const increment = target / 50;
-    let current = 0;
-    const updateCounter = () => {
-        if (current < target) {
-            current += increment;
-            counter.innerText = Math.ceil(current) + '+';
-            setTimeout(updateCounter, 30);
-        } else {
-            counter.innerText = target + '+';
-        }
-    };
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                updateCounter();
-                observer.unobserve(entry.target);
+// ===== Counter Animation =====
+// Runs after main site is shown
+function initCounters() {
+    const counters = document.querySelectorAll('.stat-item h3');
+    counters.forEach(counter => {
+        const target = parseInt(counter.innerText);
+        if (isNaN(target)) return;
+        const increment = target / 50;
+        let current = 0;
+        const updateCounter = () => {
+            if (current < target) {
+                current += increment;
+                counter.innerText = Math.ceil(current) + '+';
+                setTimeout(updateCounter, 30);
+            } else {
+                counter.innerText = target + '+';
             }
+        };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    updateCounter();
+                    observer.unobserve(entry.target);
+                }
+            });
         });
+        observer.observe(counter.parentElement);
     });
-    observer.observe(counter.parentElement);
-});
+}
+
+// Init counters after main site shows
+if (currentRole) initCounters();

@@ -8,426 +8,545 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* ===== ROLE SELECTION SCREEN ===== */
+        #role-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            flex-direction: column;
+            gap: 32px;
+            padding: 20px;
+        }
+
+        .role-logo {
+            font-size: 2rem;
+            font-weight: 800;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .role-logo span { color: #a78bfa; }
+
+        .role-heading {
+            text-align: center;
+        }
+        .role-heading h2 {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+        .role-heading p {
+            color: #94a3b8;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .role-cards {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .role-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px 36px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 240px;
+            color: white;
+        }
+        .role-card:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: #6366f1;
+            transform: translateY(-6px);
+            box-shadow: 0 20px 60px rgba(99, 102, 241, 0.3);
+        }
+        .role-card i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            display: block;
+        }
+        .role-card h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+        .role-card p {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin: 0;
+        }
+        .role-card.user-card i { color: #60a5fa; }
+        .role-card.company-card i { color: #a78bfa; }
+
+        /* ===== ROLE BADGE ===== */
+        .role-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .role-badge.user { background: rgba(96, 165, 250, 0.15); color: #3b82f6; }
+        .role-badge.company { background: rgba(167, 139, 250, 0.15); color: #7c3aed; }
+
+        /* ===== SWITCH ROLE BUTTON ===== */
+        .switch-role-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        .switch-role-btn:hover {
+            background: rgba(99, 102, 241, 0.08);
+            color: var(--primary);
+            border-color: rgba(99, 102, 241, 0.2);
+        }
+    </style>
 </head>
 <body>
 
-    <!-- ====== NAVBAR ====== -->
-    <header id="navbar">
-        <div class="container nav-inner">
-            <a href="#" class="logo">
-                <i class="ph-fill ph-hexagon" style="color: var(--primary);"></i>
-                Job<span>Sphere</span>
-            </a>
-            <nav class="nav-menu">
-                <a href="#jobs">Find Jobs</a>
-                <a href="#media">Media</a>
-                <a href="#">Companies</a>
-                <a href="#">Resources</a>
-                <a href="#">Pricing</a>
-            </nav>
-            <div class="auth-buttons" style="display: flex; gap: 15px; align-items: center;">
-                <button class="btn btn-outline login-btn" onclick="openModal('loginModal')">Sign In</button>
-                <button class="btn btn-gradient" onclick="openModal('postJobModal')">Post Job</button>
+    <!-- ====== ROLE SELECTION SCREEN ====== -->
+    <div id="role-screen">
+        <div class="role-logo">
+            <i class="ph-fill ph-hexagon" style="color: #a78bfa;"></i>
+            Job<span>Sphere</span>
+        </div>
+
+        <div class="role-heading">
+            <h2>Welcome! How are you joining?</h2>
+            <p>Choose your account type to get started</p>
+        </div>
+
+        <div class="role-cards">
+            <div class="role-card user-card" onclick="selectRole('user')">
+                <i class="ph-fill ph-user-circle"></i>
+                <h3>I'm a Job Seeker</h3>
+                <p>Find and apply for your dream job</p>
+            </div>
+            <div class="role-card company-card" onclick="selectRole('company')">
+                <i class="ph-fill ph-buildings"></i>
+                <h3>I'm a Company</h3>
+                <p>Post jobs and find top talent</p>
             </div>
         </div>
-    </header>
+    </div>
 
-    <!-- ====== HERO ====== -->
-    <section class="hero">
-        <div class="container hero-grid">
-            <div class="hero-content" data-aos="fade-right" data-aos-duration="1000">
-                <div style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(99, 102, 241, 0.1); color: var(--primary); border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1.5rem;">
-                    <i class="ph ph-trend-up" style="font-size: 1rem;"></i>
-                    #1 Job Platform in 2025
+    <!-- ====== MAIN SITE ====== -->
+    <div id="main-site" style="display: none;">
+
+        <!-- NAVBAR -->
+        <header id="navbar">
+            <div class="container nav-inner">
+                <a href="#" class="logo">
+                    <i class="ph-fill ph-hexagon" style="color: var(--primary);"></i>
+                    Job<span>Sphere</span>
+                </a>
+                <nav class="nav-menu">
+                    <a href="#jobs">Find Jobs</a>
+                    <a href="#media">Media</a>
+                    <a href="#">Companies</a>
+                    <a href="#">Resources</a>
+                    <a href="#" id="nav-post-job" style="display:none;" onclick="openModal('postJobModal')">Post Job</a>
+                </nav>
+                <div class="auth-buttons" style="display: flex; gap: 12px; align-items: center;">
+                    <!-- Switch Role button — always visible -->
+                    <button class="switch-role-btn" onclick="switchRole()">
+                        <i class="ph ph-arrows-left-right"></i>
+                        Switch Role
+                    </button>
+                    <button class="btn btn-outline login-btn" onclick="openModal('loginModal')">Sign In</button>
+                    <button id="navbar-post-job-btn" class="btn btn-gradient" style="display:none;" onclick="openModal('postJobModal')">Post Job</button>
                 </div>
-                <h1>Find the perfect job that matches your <span style="background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">passion</span></h1>
-                <p>Join thousands of professionals who found their dream roles through our intelligent matching system and global network of top companies.</p>
-                
-                <div class="search-box">
-                    <i class="ph ph-magnifying-glass" style="font-size: 1.2rem; color: var(--gray); margin-left: 20px;"></i>
-                    <input type="text" class="search-input" id="jobSearch" placeholder="Job title, keyword, or company...">
-                    <button class="search-btn" onclick="filterJobs()">
-                        <i class="ph ph-arrow-right"></i>
+            </div>
+        </header>
+
+        <!-- HERO -->
+        <section class="hero">
+            <div class="container hero-grid">
+                <div class="hero-content" data-aos="fade-right" data-aos-duration="1000">
+                    <div style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(99, 102, 241, 0.1); color: var(--primary); border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1.5rem;">
+                        <i class="ph ph-trend-up" style="font-size: 1rem;"></i>
+                        #1 Job Platform in 2025
+                    </div>
+                    <h1>Find the perfect job that matches your <span style="background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">passion</span></h1>
+                    <p>Join thousands of professionals who found their dream roles through our intelligent matching system and global network of top companies.</p>
+
+                    <div class="search-box">
+                        <i class="ph ph-magnifying-glass" style="font-size: 1.2rem; color: var(--gray); margin-left: 20px;"></i>
+                        <input type="text" class="search-input" id="jobSearch" placeholder="Job title, keyword, or company...">
+                        <button class="search-btn" onclick="filterJobs()">
+                            <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <span style="color: var(--gray); font-size: 0.9rem;">Trending searches:</span>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <a href="#" style="padding: 6px 16px; background: rgba(0,0,0,0.03); border-radius: 20px; font-size: 0.9rem; color: var(--dark); border: 1px solid rgba(0,0,0,0.05);">UI Designer</a>
+                            <a href="#" style="padding: 6px 16px; background: rgba(0,0,0,0.03); border-radius: 20px; font-size: 0.9rem; color: var(--dark); border: 1px solid rgba(0,0,0,0.05);">React Dev</a>
+                            <a href="#" style="padding: 6px 16px; background: rgba(0,0,0,0.03); border-radius: 20px; font-size: 0.9rem; color: var(--dark); border: 1px solid rgba(0,0,0,0.05);">Sales</a>
+                            <a href="#" style="padding: 6px 16px; background: rgba(0,0,0,0.03); border-radius: 20px; font-size: 0.9rem; color: var(--dark); border: 1px solid rgba(0,0,0,0.05);">Remote</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero-visual" data-aos="fade-left" data-aos-duration="1000">
+                    <div class="floating-card">
+                        <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #fee2e2, #fecaca); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #dc2626;">
+                            <i class="ph-fill ph-google-logo" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h4 style="font-size: 0.95rem; margin-bottom: 2px;">Google</h4>
+                            <span style="font-size: 0.8rem; color: var(--gray);">Senior Designer</span>
+                        </div>
+                    </div>
+                    <div class="floating-card">
+                        <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #e0e7ff, #c7d2fe); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                            <i class="ph-fill ph-user-circle" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h4 style="font-size: 0.95rem; margin-bottom: 20px;">Sarah L.</h4>
+                            <span style="font-size: 0.8rem; color: var(--gray);">Just Hired!</span>
+                        </div>
+                    </div>
+                    <div class="floating-card" style="background: var(--dark); color: white;">
+                        <i class="ph-fill ph-check-circle" style="color: var(--success);"></i>
+                        <span style="font-weight: 600;">Hired Successfully</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="container">
+                <div class="stats-bar" data-aos="fade-up" data-aos-delay="200">
+                    <div class="stats-grid">
+                        <div class="stat-item"><h3>25k+</h3><p>Live Jobs</p></div>
+                        <div class="stat-item"><h3>14k+</h3><p>Companies</p></div>
+                        <div class="stat-item"><h3>50k+</h3><p>Candidates</p></div>
+                        <div class="stat-item"><h3>98%</h3><p>Hired Rate</p></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CATEGORIES -->
+        <section class="categories">
+            <div class="container">
+                <div class="section-header" data-aos="fade-up">
+                    <h2>Explore Top Categories</h2>
+                    <p style="color: var(--gray); max-width: 600px; margin: 0 auto;">Find your perfect role in these high-demand industries</p>
+                </div>
+                <div class="cat-grid">
+                    <div class="cat-card" data-aos="zoom-in" data-aos-delay="0">
+                        <div class="cat-icon"><i class="ph ph-code"></i></div>
+                        <div class="cat-title">Development</div>
+                        <div class="cat-count">1,200+ Jobs</div>
+                    </div>
+                    <div class="cat-card" data-aos="zoom-in" data-aos-delay="100">
+                        <div class="cat-icon"><i class="ph ph-paint-brush"></i></div>
+                        <div class="cat-title">Design</div>
+                        <div class="cat-count">850+ Jobs</div>
+                    </div>
+                    <div class="cat-card" data-aos="zoom-in" data-aos-delay="200">
+                        <div class="cat-icon"><i class="ph ph-chart-bar"></i></div>
+                        <div class="cat-title">Marketing</div>
+                        <div class="cat-count">600+ Jobs</div>
+                    </div>
+                    <div class="cat-card" data-aos="zoom-in" data-aos-delay="300">
+                        <div class="cat-icon"><i class="ph ph-currency-dollar"></i></div>
+                        <div class="cat-title">Finance</div>
+                        <div class="cat-count">400+ Jobs</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- JOBS -->
+        <section class="jobs-section" id="jobs">
+            <div class="container">
+                <div class="section-header" data-aos="fade-up">
+                    <h2>Featured Opportunities</h2>
+                    <p style="color: var(--gray);">Curated high-impact roles from innovative companies</p>
+                </div>
+
+                <div id="job-list-container">
+                    <div class="job-card" data-aos="fade-up" data-title="Product Designer">
+                        <div class="company-logo" style="color: var(--accent);">
+                            <i class="ph-fill ph-dribbble-logo"></i>
+                        </div>
+                        <div class="job-main">
+                            <h3>Senior Product Designer</h3>
+                            <div class="job-tags">
+                                <span><i class="ph-fill ph-map-pin"></i> Remote</span>
+                                <span><i class="ph-fill ph-clock"></i> Full Time</span>
+                                <span><i class="ph-fill ph-calendar"></i> 2 days ago</span>
+                            </div>
+                            <p style="color: var(--gray); margin-top: 10px; font-size: 0.95rem;">Join our design team to shape the future of digital experiences for millions of users worldwide.</p>
+                        </div>
+                        <div class="job-right">
+                            <span class="salary-range">$120k - $140k</span>
+                            <button class="btn btn-gradient apply-btn" onclick="openApplyModal('Senior Product Designer')">Apply Now</button>
+                        </div>
+                    </div>
+
+                    <div class="job-card" data-aos="fade-up" data-delay="100" data-title="Frontend Developer">
+                        <div class="company-logo" style="color: #3b82f6;">
+                            <i class="ph-fill ph-behance-logo"></i>
+                        </div>
+                        <div class="job-main">
+                            <h3>Frontend Developer (React)</h3>
+                            <div class="job-tags">
+                                <span><i class="ph-fill ph-map-pin"></i> New York, USA</span>
+                                <span><i class="ph-fill ph-clock"></i> Contract</span>
+                                <span><i class="ph-fill ph-calendar"></i> 5 hours ago</span>
+                            </div>
+                            <p style="color: var(--gray); margin-top: 10px; font-size: 0.95rem;">Build cutting-edge web applications with modern React, TypeScript, and Next.js stack.</p>
+                        </div>
+                        <div class="job-right">
+                            <span class="salary-range">$90k - $110k</span>
+                            <button class="btn btn-gradient apply-btn" onclick="openApplyModal('Frontend Developer')">Apply Now</button>
+                        </div>
+                    </div>
+
+                    <div class="job-card" data-aos="fade-up" data-delay="200" data-title="Marketing Manager">
+                        <div class="company-logo" style="color: var(--success);">
+                            <i class="ph-fill ph-spotify-logo"></i>
+                        </div>
+                        <div class="job-main">
+                            <h3>Marketing Growth Manager</h3>
+                            <div class="job-tags">
+                                <span><i class="ph-fill ph-map-pin"></i> London, UK</span>
+                                <span><i class="ph-fill ph-clock"></i> Full Time</span>
+                                <span><i class="ph-fill ph-calendar"></i> 1 week ago</span>
+                            </div>
+                            <p style="color: var(--gray); margin-top: 10px; font-size: 0.95rem;">Drive user acquisition and retention through innovative marketing strategies.</p>
+                        </div>
+                        <div class="job-right">
+                            <span class="salary-range">$70k - $95k</span>
+                            <button class="btn btn-gradient apply-btn" onclick="openApplyModal('Marketing Manager')">Apply Now</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 4rem;" data-aos="fade-up">
+                    <button class="btn btn-primary" style="padding: 16px 40px;">
+                        View All Jobs <i class="ph ph-arrow-right" style="margin-left: 8px;"></i>
                     </button>
                 </div>
+            </div>
+        </section>
 
-                <div style="margin-top: 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <span style="color: var(--gray); font-size: 0.9rem;">Trending searches:</span>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <a href="#" style="padding: 6px 16px; background: rgba(0,0,0,0.03); border-radius: 20px; font-size: 0.9rem; color: var(--dark); border: 1px solid rgba(0,0,0,0.05);">UI Designer</a>
-                        <a href="#" style="padding: 6px 16px; background: rgba(0,0,0,0.03); border-radius: 20px; font-size: 0.9rem; color: var(--dark); border: 1px solid rgba(0,0,0,0.05);">React Dev</a>
-                        <a href="#" style="padding: 6px 16px; background: rgba(0,0,0,0.03); border-radius: 20px; font-size: 0.9rem; color: var(--dark); border: 1px solid rgba(0,0,0,0.05);">Sales</a>
-                        <a href="#" style="padding: 6px 16px; background: rgba(0,0,0,0.03); border-radius: 20px; font-size: 0.9rem; color: var(--dark); border: 1px solid rgba(0,0,0,0.05);">Remote</a>
+        <!-- MEDIA GALLERY -->
+        <section id="media" style="padding: 80px 0; background: var(--light);">
+            <div class="container">
+                <div class="section-header" data-aos="fade-up" style="text-align:center; margin-bottom:40px;">
+                    <h2>Media Gallery</h2>
+                    <p style="color: var(--gray);">Photos and videos shared by our community</p>
+                </div>
+                <div id="media-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
+                    <p style="color: var(--gray); text-align: center; grid-column: 1/-1;">No media uploaded yet.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section style="padding: 6rem 0; background: white;">
+            <div class="container">
+                <div style="background: var(--gradient-dark); border-radius: var(--radius-xl); padding: 5rem; text-align: center; position: relative; overflow: hidden;" data-aos="zoom-in">
+                    <div style="position: absolute; top: -50%; left: -20%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); opacity: 0.3;"></div>
+                    <h2 style="color: white; font-size: 2.8rem; margin-bottom: 1rem; position: relative; z-index: 2;">Ready to Accelerate Your Career?</h2>
+                    <p style="color: #94a3b8; margin-bottom: 2.5rem; font-size: 1.1rem; position: relative; z-index: 2; max-width: 600px; margin-left: auto; margin-right: auto;">Join thousands of professionals who found their dream jobs through JobSphere.</p>
+                    <div style="display: flex; gap: 20px; justify-content: center; position: relative; z-index: 2; flex-wrap: wrap;">
+                        <button class="btn btn-gradient" style="padding: 16px 40px;" onclick="openModal('loginModal')">Get Started</button>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <div class="hero-visual" data-aos="fade-left" data-aos-duration="1000">
-                <div class="floating-card">
-                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #dc2626;">
-                        <i class="ph-fill ph-google-logo" style="font-size: 1.5rem;"></i>
+        <!-- FOOTER -->
+        <footer>
+            <div class="container">
+                <div class="footer-grid">
+                    <div class="footer-col">
+                        <div class="logo" style="margin-bottom: 25px; color: white;">
+                            <i class="ph-fill ph-hexagon"></i> Job<span>Sphere</span>
+                        </div>
+                        <p style="color: #94a3b8; line-height: 1.7; margin-bottom: 25px;">The future of recruitment is here. Connect with top talent and discover amazing opportunities worldwide.</p>
+                        <div style="display: flex; gap: 15px;">
+                            <a href="#" style="color: white; font-size: 1.2rem; opacity: 0.7;"><i class="ph ph-twitter-logo"></i></a>
+                            <a href="#" style="color: white; font-size: 1.2rem; opacity: 0.7;"><i class="ph ph-linkedin-logo"></i></a>
+                            <a href="#" style="color: white; font-size: 1.2rem; opacity: 0.7;"><i class="ph ph-instagram-logo"></i></a>
+                            <a href="#" style="color: white; font-size: 1.2rem; opacity: 0.7;"><i class="ph ph-github-logo"></i></a>
+                        </div>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Job Seekers</h4>
+                        <ul>
+                            <li><a href="#">Browse Jobs</a></li>
+                            <li><a href="#">Create Profile</a></li>
+                            <li><a href="#">Career Resources</a></li>
+                            <li><a href="#">Salary Calculator</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Employers</h4>
+                        <ul>
+                            <li><a href="#">Post a Job</a></li>
+                            <li><a href="#">Browse Candidates</a></li>
+                            <li><a href="#">Recruitment Solutions</a></li>
+                            <li><a href="#">Pricing Plans</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Contact Us</h4>
+                        <ul style="color: #94a3b8;">
+                            <li><i class="ph ph-envelope-simple" style="margin-right: 8px;"></i> hello@jobsphere.com</li>
+                            <li><i class="ph ph-phone" style="margin-right: 8px;"></i> +1 (555) 123-4567</li>
+                            <li><i class="ph ph-map-pin" style="margin-right: 8px;"></i> San Francisco, CA</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="copyright">
+                    &copy; 2024 JobSphere Inc. All rights reserved. | Privacy Policy | Terms of Service
+                </div>
+            </div>
+        </footer>
+
+        <!-- LOGIN MODAL -->
+        <div class="modal-wrap" id="loginModal">
+            <div class="modal-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h3 style="font-size: 1.5rem;">Sign In to JobSphere</h3>
+                    <button onclick="closeModal('loginModal')" style="background: none; border: none; font-size: 1.8rem; color: var(--gray); cursor: pointer; padding: 5px;">&times;</button>
+                </div>
+                <div style="text-align: center; padding: 20px 0;">
+                    <p style="color: var(--gray); margin-bottom: 30px;">Sign in to continue to JobSphere</p>
+                    <button onclick="googleSignIn()" class="btn google-btn" style="width: 100%; padding: 16px; background: white; border: 2px solid #e2e8f0; color: #1e293b; display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Continue with Google
+                    </button>
+                    <p style="margin-top: 20px; color: var(--gray); font-size: 0.85rem;">By continuing, you agree to our Terms of Service and Privacy Policy</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- POST JOB MODAL (companies only) -->
+        <div class="modal-wrap" id="postJobModal">
+            <div class="modal-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h3 style="font-size: 1.5rem;">Post a New Job</h3>
+                    <button onclick="closeModal('postJobModal')" style="background: none; border: none; font-size: 1.8rem; color: var(--gray); cursor: pointer; padding: 5px;">&times;</button>
+                </div>
+                <form onsubmit="handleJobPost(event)" style="display: grid; gap: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Job Title</label>
+                        <input type="text" placeholder="e.g. Senior Product Designer" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
                     </div>
                     <div>
-                        <h4 style="font-size: 0.95rem; margin-bottom: 2px;">Google</h4>
-                        <span style="font-size: 0.8rem; color: var(--gray);">Senior Designer</span>
-                    </div>
-                </div>
-                <div class="floating-card">
-                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
-                        <i class="ph-fill ph-user-circle" style="font-size: 1.5rem;"></i>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Company Name</label>
+                        <input type="text" placeholder="Your company name" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
                     </div>
                     <div>
-                        <h4 style="font-size: 0.95rem; margin-bottom: 20px;">Sarah L.</h4>
-                        <span style="font-size: 0.8rem; color: var(--gray);">Just Hired!</span>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Location</label>
+                        <input type="text" placeholder="e.g. Remote / New York, USA" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
                     </div>
-                </div>
-                <div class="floating-card" style="background: var(--dark); color: white;">
-                    <i class="ph-fill ph-check-circle" style="color: var(--success);"></i>
-                    <span style="font-weight: 600;">Hired Successfully</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="container">
-            <div class="stats-bar" data-aos="fade-up" data-aos-delay="200">
-                <div class="stats-grid">
-                    <div class="stat-item"><h3>25k+</h3><p>Live Jobs</p></div>
-                    <div class="stat-item"><h3>14k+</h3><p>Companies</p></div>
-                    <div class="stat-item"><h3>50k+</h3><p>Candidates</p></div>
-                    <div class="stat-item"><h3>98%</h3><p>Hired Rate</p></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ====== CATEGORIES ====== -->
-    <section class="categories">
-        <div class="container">
-            <div class="section-header" data-aos="fade-up">
-                <h2>Explore Top Categories</h2>
-                <p style="color: var(--gray); max-width: 600px; margin: 0 auto;">Find your perfect role in these high-demand industries</p>
-            </div>
-            <div class="cat-grid">
-                <div class="cat-card" data-aos="zoom-in" data-aos-delay="0">
-                    <div class="cat-icon"><i class="ph ph-code"></i></div>
-                    <div class="cat-title">Development</div>
-                    <div class="cat-count">1,200+ Jobs</div>
-                </div>
-                <div class="cat-card" data-aos="zoom-in" data-aos-delay="100">
-                    <div class="cat-icon"><i class="ph ph-paint-brush"></i></div>
-                    <div class="cat-title">Design</div>
-                    <div class="cat-count">850+ Jobs</div>
-                </div>
-                <div class="cat-card" data-aos="zoom-in" data-aos-delay="200">
-                    <div class="cat-icon"><i class="ph ph-chart-bar"></i></div>
-                    <div class="cat-title">Marketing</div>
-                    <div class="cat-count">600+ Jobs</div>
-                </div>
-                <div class="cat-card" data-aos="zoom-in" data-aos-delay="300">
-                    <div class="cat-icon"><i class="ph ph-currency-dollar"></i></div>
-                    <div class="cat-title">Finance</div>
-                    <div class="cat-count">400+ Jobs</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ====== JOBS ====== -->
-    <section class="jobs-section" id="jobs">
-        <div class="container">
-            <div class="section-header" data-aos="fade-up">
-                <h2>Featured Opportunities</h2>
-                <p style="color: var(--gray);">Curated high-impact roles from innovative companies</p>
-            </div>
-
-            <!-- Static jobs shown by default. If Firestore has jobs, they replace this. -->
-            <div id="job-list-container">
-                <div class="job-card" data-aos="fade-up" data-title="Product Designer">
-                    <div class="company-logo" style="color: var(--accent);">
-                        <i class="ph-fill ph-dribbble-logo"></i>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Salary Range</label>
+                        <input type="text" placeholder="e.g. $100k - $130k" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
                     </div>
-                    <div class="job-main">
-                        <h3>Senior Product Designer</h3>
-                        <div class="job-tags">
-                            <span><i class="ph-fill ph-map-pin"></i> Remote</span>
-                            <span><i class="ph-fill ph-clock"></i> Full Time</span>
-                            <span><i class="ph-fill ph-calendar"></i> 2 days ago</span>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Job Description</label>
+                        <textarea rows="4" placeholder="Describe the role and requirements..." required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-gradient" style="width: 100%; padding: 16px; margin-top: 10px;">Post Job Now</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- APPLY MODAL (users only) -->
+        <div class="modal-wrap" id="applyModal">
+            <div class="modal-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h3 id="modalTitle" style="font-size: 1.5rem;">Apply Now</h3>
+                    <button onclick="closeModal('applyModal')" style="background: none; border: none; font-size: 1.8rem; color: var(--gray); cursor: pointer; padding: 5px;">&times;</button>
+                </div>
+                <form onsubmit="handleApply(event)" style="display: grid; gap: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Full Name</label>
+                        <input type="text" id="applicantName" placeholder="John Doe" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Email Address</label>
+                        <input type="email" id="applicantEmail" placeholder="john@example.com" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Cover Letter</label>
+                        <textarea rows="5" placeholder="Tell us why you're the perfect candidate..." style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-gradient" style="width: 100%; padding: 16px; margin-top: 10px;">Submit Application</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- UPLOAD MEDIA MODAL -->
+        <div class="modal-wrap" id="uploadModal">
+            <div class="modal-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h3 style="font-size: 1.5rem;">Upload Photo or Video</h3>
+                    <button onclick="closeModal('uploadModal')" style="background: none; border: none; font-size: 1.8rem; color: var(--gray); cursor: pointer; padding: 5px;">&times;</button>
+                </div>
+                <form onsubmit="handleMediaUpload(event)" style="display: grid; gap: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Select Photo or Video</label>
+                        <input type="file" id="mediaFile" accept="image/*,video/*" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem; cursor: pointer;">
+                        <small style="color: var(--gray); margin-top: 6px; display: block;">Images: max 10MB | Videos: max 50MB</small>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Caption (optional)</label>
+                        <input type="text" id="mediaCaption" placeholder="Add a caption..." style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
+                    </div>
+                    <div id="uploadProgress" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <small style="color: var(--gray);">Uploading...</small>
+                            <small id="uploadProgressText" style="color: var(--primary); font-weight: 600;">0%</small>
                         </div>
-                        <p style="color: var(--gray); margin-top: 10px; font-size: 0.95rem;">Join our design team to shape the future of digital experiences for millions of users worldwide.</p>
-                    </div>
-                    <div class="job-right">
-                        <span class="salary-range">$120k - $140k</span>
-                        <button class="btn btn-gradient" onclick="openApplyModal('Senior Product Designer')">Apply Now</button>
-                    </div>
-                </div>
-
-                <div class="job-card" data-aos="fade-up" data-delay="100" data-title="Frontend Developer">
-                    <div class="company-logo" style="color: #3b82f6;">
-                        <i class="ph-fill ph-behance-logo"></i>
-                    </div>
-                    <div class="job-main">
-                        <h3>Frontend Developer (React)</h3>
-                        <div class="job-tags">
-                            <span><i class="ph-fill ph-map-pin"></i> New York, USA</span>
-                            <span><i class="ph-fill ph-clock"></i> Contract</span>
-                            <span><i class="ph-fill ph-calendar"></i> 5 hours ago</span>
+                        <div style="background: #e2e8f0; border-radius: 99px; height: 8px; overflow: hidden;">
+                            <div id="uploadProgressFill" style="height: 100%; width: 0%; background: var(--gradient-primary); border-radius: 99px; transition: width 0.3s ease;"></div>
                         </div>
-                        <p style="color: var(--gray); margin-top: 10px; font-size: 0.95rem;">Build cutting-edge web applications with modern React, TypeScript, and Next.js stack.</p>
                     </div>
-                    <div class="job-right">
-                        <span class="salary-range">$90k - $110k</span>
-                        <button class="btn btn-gradient" onclick="openApplyModal('Frontend Developer')">Apply Now</button>
-                    </div>
-                </div>
-
-                <div class="job-card" data-aos="fade-up" data-delay="200" data-title="Marketing Manager">
-                    <div class="company-logo" style="color: var(--success);">
-                        <i class="ph-fill ph-spotify-logo"></i>
-                    </div>
-                    <div class="job-main">
-                        <h3>Marketing Growth Manager</h3>
-                        <div class="job-tags">
-                            <span><i class="ph-fill ph-map-pin"></i> London, UK</span>
-                            <span><i class="ph-fill ph-clock"></i> Full Time</span>
-                            <span><i class="ph-fill ph-calendar"></i> 1 week ago</span>
-                        </div>
-                        <p style="color: var(--gray); margin-top: 10px; font-size: 0.95rem;">Drive user acquisition and retention through innovative marketing strategies and campaigns.</p>
-                    </div>
-                    <div class="job-right">
-                        <span class="salary-range">$70k - $95k</span>
-                        <button class="btn btn-gradient" onclick="openApplyModal('Marketing Manager')">Apply Now</button>
-                    </div>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin-top: 4rem;" data-aos="fade-up">
-                <button class="btn btn-primary" style="padding: 16px 40px;">
-                    View All Jobs <i class="ph ph-arrow-right" style="margin-left: 8px;"></i>
-                </button>
+                    <button type="submit" class="btn btn-gradient" style="width: 100%; padding: 16px; margin-top: 10px;">Upload</button>
+                </form>
             </div>
         </div>
-    </section>
 
-    <!-- ====== MEDIA GALLERY ====== -->
-    <section id="media" style="padding: 80px 0; background: var(--light);">
-        <div class="container">
-            <div class="section-header" data-aos="fade-up" style="text-align:center; margin-bottom:40px;">
-                <h2>Media Gallery</h2>
-                <p style="color: var(--gray);">Photos and videos shared by our community</p>
-            </div>
-            <div id="media-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
-                <p style="color: var(--gray); text-align: center; grid-column: 1/-1;">No media uploaded yet. Sign in to upload!</p>
-            </div>
-        </div>
-    </section>
+    </div><!-- end #main-site -->
 
-    <!-- ====== CTA SECTION ====== -->
-    <section style="padding: 6rem 0; background: white;">
-        <div class="container">
-            <div style="background: var(--gradient-dark); border-radius: var(--radius-xl); padding: 5rem; text-align: center; position: relative; overflow: hidden;" data-aos="zoom-in">
-                <div style="position: absolute; top: -50%; left: -20%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); opacity: 0.3;"></div>
-                <h2 style="color: white; font-size: 2.8rem; margin-bottom: 1rem; position: relative; z-index: 2;">Ready to Accelerate Your Career?</h2>
-                <p style="color: #94a3b8; margin-bottom: 2.5rem; font-size: 1.1rem; position: relative; z-index: 2; max-width: 600px; margin-left: auto; margin-right: auto;">Join thousands of professionals who found their dream jobs through JobSphere's intelligent platform.</p>
-                <div style="display: flex; gap: 20px; justify-content: center; position: relative; z-index: 2; flex-wrap: wrap;">
-                    <button class="btn btn-gradient" style="padding: 16px 40px;" onclick="openModal('signupModal')">Find Your Dream Job</button>
-                    <button class="btn" style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 16px 40px;" onclick="openModal('postJobModal')">Post a Job</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ====== FOOTER ====== -->
-    <footer>
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-col">
-                    <div class="logo" style="margin-bottom: 25px; color: white;">
-                        <i class="ph-fill ph-hexagon"></i> Job<span>Sphere</span>
-                    </div>
-                    <p style="color: #94a3b8; line-height: 1.7; margin-bottom: 25px;">The future of recruitment is here. Connect with top talent and discover amazing opportunities worldwide.</p>
-                    <div style="display: flex; gap: 15px;">
-                        <a href="#" style="color: white; font-size: 1.2rem; opacity: 0.7;"><i class="ph ph-twitter-logo"></i></a>
-                        <a href="#" style="color: white; font-size: 1.2rem; opacity: 0.7;"><i class="ph ph-linkedin-logo"></i></a>
-                        <a href="#" style="color: white; font-size: 1.2rem; opacity: 0.7;"><i class="ph ph-instagram-logo"></i></a>
-                        <a href="#" style="color: white; font-size: 1.2rem; opacity: 0.7;"><i class="ph ph-github-logo"></i></a>
-                    </div>
-                </div>
-                <div class="footer-col">
-                    <h4>Job Seekers</h4>
-                    <ul>
-                        <li><a href="#">Browse Jobs</a></li>
-                        <li><a href="#">Create Profile</a></li>
-                        <li><a href="#">Career Resources</a></li>
-                        <li><a href="#">Salary Calculator</a></li>
-                    </ul>
-                </div>
-                <div class="footer-col">
-                    <h4>Employers</h4>
-                    <ul>
-                        <li><a href="#">Post a Job</a></li>
-                        <li><a href="#">Browse Candidates</a></li>
-                        <li><a href="#">Recruitment Solutions</a></li>
-                        <li><a href="#">Pricing Plans</a></li>
-                    </ul>
-                </div>
-                <div class="footer-col">
-                    <h4>Contact Us</h4>
-                    <ul style="color: #94a3b8;">
-                        <li><i class="ph ph-envelope-simple" style="margin-right: 8px;"></i> hello@jobsphere.com</li>
-                        <li><i class="ph ph-phone" style="margin-right: 8px;"></i> +1 (555) 123-4567</li>
-                        <li><i class="ph ph-map-pin" style="margin-right: 8px;"></i> San Francisco, CA</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="copyright">
-                &copy; 2024 JobSphere Inc. All rights reserved. | Privacy Policy | Terms of Service
-            </div>
-        </div>
-    </footer>
-
-    <!-- ====== LOGIN MODAL ====== -->
-    <div class="modal-wrap" id="loginModal">
-        <div class="modal-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <h3 style="font-size: 1.5rem;">Welcome to JobSphere</h3>
-                <button onclick="closeModal('loginModal')" style="background: none; border: none; font-size: 1.8rem; color: var(--gray); cursor: pointer; padding: 5px;">&times;</button>
-            </div>
-            <div style="text-align: center; padding: 20px 0;">
-                <p style="color: var(--gray); margin-bottom: 30px;">Sign in to access thousands of job opportunities</p>
-                <button onclick="googleSignIn()" class="btn google-btn" style="width: 100%; padding: 16px; background: white; border: 2px solid #e2e8f0; color: #1e293b; display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px;">
-                    <svg width="24" height="24" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    Continue with Google
-                </button>
-                <p style="margin-top: 20px; color: var(--gray); font-size: 0.85rem;">By continuing, you agree to our Terms of Service and Privacy Policy</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== SIGNUP MODAL ====== -->
-    <div class="modal-wrap" id="signupModal">
-        <div class="modal-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <h3 style="font-size: 1.5rem;">Create Account</h3>
-                <button onclick="closeModal('signupModal')" style="background: none; border: none; font-size: 1.8rem; color: var(--gray); cursor: pointer; padding: 5px;">&times;</button>
-            </div>
-            <div style="text-align: center; padding: 20px 0;">
-                <p style="color: var(--gray); margin-bottom: 30px;">Join thousands of professionals on JobSphere</p>
-                <button onclick="googleSignIn()" class="btn google-btn" style="width: 100%; padding: 16px; background: white; border: 2px solid #e2e8f0; color: #1e293b; display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px;">
-                    <svg width="24" height="24" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    Sign up with Google
-                </button>
-                <p style="margin-top: 20px; color: var(--gray); font-size: 0.85rem;">By continuing, you agree to our Terms of Service and Privacy Policy</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== POST JOB MODAL ====== -->
-    <div class="modal-wrap" id="postJobModal">
-        <div class="modal-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <h3 style="font-size: 1.5rem;">Post a New Job</h3>
-                <button onclick="closeModal('postJobModal')" style="background: none; border: none; font-size: 1.8rem; color: var(--gray); cursor: pointer; padding: 5px;">&times;</button>
-            </div>
-            <form onsubmit="handleJobPost(event)" style="display: grid; gap: 20px;">
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Job Title</label>
-                    <input type="text" placeholder="e.g. Senior Product Designer" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Company Name</label>
-                    <input type="text" placeholder="Your company name" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Location</label>
-                    <input type="text" placeholder="e.g. Remote / New York, USA" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Salary Range</label>
-                    <input type="text" placeholder="e.g. $100k - $130k" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Job Description</label>
-                    <textarea rows="4" placeholder="Describe the role and requirements..." required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem; resize: vertical;"></textarea>
-                </div>
-                <button type="submit" class="btn btn-gradient" style="width: 100%; padding: 16px; margin-top: 10px;">Post Job Now</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- ====== APPLY MODAL ====== -->
-    <div class="modal-wrap" id="applyModal">
-        <div class="modal-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <h3 id="modalTitle" style="font-size: 1.5rem;">Apply Now</h3>
-                <button onclick="closeModal('applyModal')" style="background: none; border: none; font-size: 1.8rem; color: var(--gray); cursor: pointer; padding: 5px;">&times;</button>
-            </div>
-            <form onsubmit="handleApply(event)" style="display: grid; gap: 20px;">
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Full Name</label>
-                    <input type="text" id="applicantName" placeholder="John Doe" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Email Address</label>
-                    <input type="email" id="applicantEmail" placeholder="john@example.com" required style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Cover Letter</label>
-                    <textarea rows="5" placeholder="Tell us why you're the perfect candidate for this role..." style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem; resize: vertical;"></textarea>
-                </div>
-                <button type="submit" class="btn btn-gradient" style="width: 100%; padding: 16px; margin-top: 10px;">Submit Application</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- ====== UPLOAD MEDIA MODAL ====== -->
-    <div class="modal-wrap" id="uploadModal">
-        <div class="modal-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <h3 style="font-size: 1.5rem;">Upload Photo or Video</h3>
-                <button onclick="closeModal('uploadModal')" style="background: none; border: none; font-size: 1.8rem; color: var(--gray); cursor: pointer; padding: 5px;">&times;</button>
-            </div>
-            <form onsubmit="handleMediaUpload(event)" style="display: grid; gap: 20px;">
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Select Photo or Video</label>
-                    <input type="file" id="mediaFile" accept="image/*,video/*" required
-                        style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem; cursor: pointer;">
-                    <small style="color: var(--gray); margin-top: 6px; display: block;">Images: max 10MB &nbsp;|&nbsp; Videos: max 50MB</small>
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 8px; color: var(--gray); font-size: 0.9rem;">Caption (optional)</label>
-                    <input type="text" id="mediaCaption" placeholder="Add a caption..."
-                        style="padding: 14px; border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; width: 100%; font-size: 1rem;">
-                </div>
-
-                <!-- Progress bar -->
-                <div id="uploadProgress" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                        <small style="color: var(--gray);">Uploading...</small>
-                        <small id="uploadProgressText" style="color: var(--primary); font-weight: 600;">0%</small>
-                    </div>
-                    <div style="background: #e2e8f0; border-radius: 99px; height: 8px; overflow: hidden;">
-                        <div id="uploadProgressFill" style="height: 100%; width: 0%; background: var(--gradient-primary); border-radius: 99px; transition: width 0.3s ease;"></div>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-gradient" style="width: 100%; padding: 16px; margin-top: 10px;">Upload</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- AOS + Script -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script type="module" src="script.js"></script>
-
 </body>
 </html>
