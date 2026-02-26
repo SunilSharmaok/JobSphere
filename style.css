@@ -933,3 +933,135 @@ footer {
 .role-cards { animation-delay: 0.3s; }
 .role-card:first-child { animation-delay: 0.4s; }
 .role-card:last-child { animation-delay: 0.5s; }
+
+
+/* Add to existing style.css */
+
+/* Auth Toggle Styles */
+.auth-toggle {
+    transition: all 0.3s ease;
+}
+
+.auth-toggle.active {
+    background: white !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    color: var(--primary) !important;
+}
+
+/* Role Badge Styles */
+.role-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.role-badge.company {
+    background: rgba(236, 72, 153, 0.1);
+    color: var(--accent);
+}
+
+.role-badge.user {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
+}
+
+/* Switch Role Button */
+.switch-role-btn {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.switch-role-btn:hover {
+    background: rgba(99, 102, 241, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Form Input Focus Styles */
+input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Disabled Button Styles */
+button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Google Button Hover */
+.google-btn:hover {
+    background: #f8fafc !important;
+    border-color: var(--primary) !important;
+    transform: translateY(-2px);
+}
+
+/* Modal Responsive */
+@media (max-width: 480px) {
+    .modal-box {
+        padding: 1.5rem;
+    }
+    
+    .auth-toggle {
+        padding: 10px !important;
+        font-size: 0.9rem;
+    }
+}
+
+/* Animation for form switching */
+#signinForm, #signupForm {
+    transition: opacity 0.3s ease;
+}
+
+/* Forgot Password Link */
+#signinForm a {
+    transition: color 0.3s ease;
+}
+
+#signinForm a:hover {
+    color: var(--primary-dark) !important;
+    text-decoration: underline !important;
+}
+
+/* Password Strength Indicator (optional) */
+.password-strength {
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.password-strength-fill {
+    height: 100%;
+    width: 0;
+    transition: width 0.3s ease;
+}
+
+/* User Menu Responsive */
+@media (max-width: 768px) {
+    .role-badge {
+        display: none;
+    }
+    
+    .switch-role-btn span {
+        display: none;
+    }
+    
+    .switch-role-btn {
+        padding: 8px;
+    }
+}
