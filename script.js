@@ -39,6 +39,14 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
+// Cloudinary Configuration - REPLACE WITH YOUR ACTUAL VALUES
+const CLOUDINARY_CONFIG = {
+    cloudName: 'dsv4npqz3', //name
+    uploadPreset: 'jobsphere_media', // The preset you created
+    maxImageSize: 10485760, // 10MB
+    maxVideoSize: 52428800 // 50MB
+};
+
 let currentRole = null;
 
 // Check for saved role on page load
@@ -56,7 +64,7 @@ if (savedRole) {
     });
 }
 
-// ===== UPDATED ROLE SELECTION FUNCTION =====
+// ===== ROLE SELECTION FUNCTION =====
 window.selectRole = async function(role) {
     currentRole = role;
     localStorage.setItem('jobsphere_role', role);
@@ -113,7 +121,7 @@ function showMainSite() {
     initCounters();
 }
 
-// ===== UPDATED APPLY ROLE UI FUNCTION =====
+// ===== APPLY ROLE UI FUNCTION =====
 function applyRoleUI(role) {
     const postJobBtn = document.getElementById('navbar-post-job-btn');
     const navPostJob = document.getElementById('nav-post-job');
@@ -176,7 +184,7 @@ function applyRoleUI(role) {
     }
 }
 
-// ===== UPDATED SWITCH ROLE FUNCTION =====
+// ===== SWITCH ROLE FUNCTION =====
 window.switchRole = function() {
     // Sign out if user is logged in
     if (auth.currentUser) {
@@ -991,21 +999,165 @@ function getSampleJobsHTML() {
     `;
 }
 
-// Media Upload (placeholder)
+// ===== MEDIA UPLOAD WITH CLOUDINARY =====
 window.handleMediaUpload = async function(e) {
     e.preventDefault();
+    
     const user = auth.currentUser;
-
     if (!user) {
-        showNotification('Please sign in to upload', 'info');
+        showNotification('Please sign in to upload media', 'info');
         openModal('authModal');
         return;
     }
 
-    showNotification('Media upload coming soon via Cloudinary!', 'info');
+    const fileInput = document.getElementById('mediaFile');
+    const caption = document.getElementById('mediaCaption').value;
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showNotification('Please select a file to upload', 'error');
+        return;
+    }
+
+    // Check file type and size
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    
+    if (!isImage && !isVideo) {
+        showNotification('Please select an image or video file', 'error');
+        return;
+    }
+
+    if (isImage && file.size > CLOUDINARY_CONFIG.maxImageSize) {
+        showNotification('Image must be less than 10MB', 'error');
+        return;
+    }
+    if (isVideo && file.size > CLOUDINARY_CONFIG.maxVideoSize) {
+        showNotification('Video must be less than 50MB', 'error');
+        return;
+    }
+
+    // Show uploading state
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Uploading...';
+    btn.disabled = true;
+
+    // Create progress indicator
+    const progressDiv = document.createElement('div');
+    progressDiv.className = 'upload-progress';
+    progressDiv.innerHTML = '<div class="progress-bar" style="width:0%"></div>';
+    e.target.appendChild(progressDiv);
+
+    try {
+        // Create form data for Cloudinary
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
+        formData.append('folder', 'jobsphere_media');
+        
+        // Add tags for easy filtering
+        formData.append('tags', `user_${user.uid},jobsphere,${isImage ? 'image' : 'video'}`);
+        
+        const resourceType = isVideo ? 'video' : 'image';
+        
+        // Upload to Cloudinary
+        const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/${resourceType}/upload`,
+            {
+                method: 'POST',
+                body: formData
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+
+        const data = await response.json();
+
+        // Get video duration if it's a video
+        let duration = null;
+        if (isVideo && data.duration) {
+            duration = data.duration;
+        }
+
+        // Save media info to Firestore
+        await addDoc(collection(db, "media"), {
+            url: data.secure_url,
+            publicId: data.public_id,
+            type: resourceType,
+            caption: caption || '',
+            uploadedBy: user.uid,
+            uploaderName: user.displayName || user.email?.split('@')[0] || 'User',
+            uploaderPhoto: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email || 'User')}&background=6366f1&color=fff&size=32`,
+            fileSize: data.bytes,
+            format: data.format,
+            width: data.width || null,
+            height: data.height || null,
+            duration: duration,
+            originalFilename: file.name,
+            uploadedAt: serverTimestamp()
+        });
+
+        // Show success message
+        btn.innerHTML = '<i class="ph ph-check-circle"></i> Uploaded!';
+        btn.style.background = 'var(--success)';
+        
+        // Remove progress bar
+        progressDiv.remove();
+        
+        // Close modal and reset form
+        setTimeout(() => {
+            closeModal('uploadModal');
+            fileInput.value = '';
+            document.getElementById('mediaCaption').value = '';
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+            btn.disabled = false;
+            
+            // Reload media gallery
+            loadMediaGallery();
+            showNotification('Media uploaded successfully!', 'success');
+        }, 1500);
+
+    } catch (error) {
+        console.error('Upload error:', error);
+        showNotification('Upload failed. Please try again.', 'error');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        progressDiv.remove();
+    }
 }
 
-// Load Media Gallery
+// ===== DOWNLOAD MEDIA FUNCTION =====
+window.downloadMedia = async function(url, filename, isVideo = false) {
+    try {
+        showNotification('Starting download...', 'info');
+        
+        // For Cloudinary URLs, add fl_attachment flag to force download
+        const downloadUrl = url.includes('cloudinary.com') 
+            ? url.replace('/upload/', '/upload/fl_attachment/')
+            : url;
+        
+        // Create temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename || 'jobsphere-media';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showNotification('Download started!', 'success');
+    } catch (error) {
+        console.error('Download error:', error);
+        showNotification('Download failed', 'error');
+    }
+}
+
+// ===== LOAD MEDIA GALLERY =====
 async function loadMediaGallery() {
     const gallery = document.getElementById('media-gallery');
     if (!gallery) return;
@@ -1015,39 +1167,235 @@ async function loadMediaGallery() {
         const snapshot = await getDocs(q);
 
         if (snapshot.empty) {
-            gallery.innerHTML = '<p style="color:var(--gray);text-align:center;grid-column:1/-1;">No media uploaded yet.</p>';
+            gallery.innerHTML = getEmptyGalleryHTML();
             return;
         }
 
         gallery.innerHTML = '';
         snapshot.forEach(docSnap => {
             const media = docSnap.data();
+            const mediaId = docSnap.id;
+            
             if (media.type === 'image') {
-                gallery.innerHTML += `
-                    <div style="border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-                        <img src="${media.url}" alt="${media.caption || ''}" style="width:100%;height:200px;object-fit:cover;display:block;">
-                        <div style="padding:12px;">
-                            <p style="font-size:0.9rem;color:var(--dark);margin-bottom:4px;">${media.caption || ''}</p>
-                            <small style="color:var(--gray);">by ${media.uploaderName}</small>
-                        </div>
-                    </div>`;
+                gallery.innerHTML += createImageCard(media, mediaId);
             } else if (media.type === 'video') {
-                gallery.innerHTML += `
-                    <div style="border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-                        <video controls style="width:100%;height:200px;object-fit:cover;display:block;background:#000;">
-                            <source src="${media.url}">
-                        </video>
-                        <div style="padding:12px;">
-                            <p style="font-size:0.9rem;color:var(--dark);margin-bottom:4px;">${media.caption || ''}</p>
-                            <small style="color:var(--gray);">by ${media.uploaderName}</small>
-                        </div>
-                    </div>`;
+                gallery.innerHTML += createVideoCard(media, mediaId);
             }
         });
 
+        // Add upload button if user is logged in
+        if (auth.currentUser) {
+            addUploadButtonToGallery();
+        }
+
     } catch (error) {
         console.error('Error loading media:', error);
+        gallery.innerHTML = '<p style="color:var(--gray);text-align:center;grid-column:1/-1;">Error loading media. Please refresh.</p>';
     }
+}
+
+// ===== CREATE IMAGE CARD =====
+function createImageCard(media, id) {
+    const user = auth.currentUser;
+    const canDelete = user && (user.uid === media.uploadedBy || currentRole === 'company');
+    const filename = media.originalFilename || `image-${id}.${media.format || 'jpg'}`;
+    
+    return `
+        <div class="media-card" data-media-id="${id}" data-aos="fade-up">
+            <div class="media-preview" onclick="openMediaModal('${media.url}', 'image', '${media.caption?.replace(/'/g, "\\'") || ''}', '${media.uploaderName}')">
+                <img src="${media.url}" alt="${media.caption || 'Uploaded image'}" loading="lazy">
+                ${media.width && media.height ? `<span class="media-dimensions">${media.width}×${media.height}</span>` : ''}
+            </div>
+            <div class="media-info">
+                <div class="media-caption">${media.caption || '📷 Photo'}</div>
+                <div class="media-meta">
+                    <img src="${media.uploaderPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(media.uploaderName)}&background=6366f1&color=fff&size=32`}" 
+                         class="media-avatar" 
+                         alt="${media.uploaderName}"
+                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(media.uploaderName)}&background=6366f1&color=fff&size=32'">
+                    <span class="media-uploader">${media.uploaderName}</span>
+                    <span class="media-time">${formatTimeAgo(media.uploadedAt)}</span>
+                </div>
+                <div class="media-actions">
+                    <button onclick="downloadMedia('${media.url}', '${filename}', false)" 
+                            class="media-action-btn download-btn" title="Download">
+                        <i class="ph ph-download-simple"></i>
+                    </button>
+                    ${canDelete ? `
+                        <button onclick="deleteMedia('${id}', '${media.publicId}', '${media.type}')" 
+                                class="media-action-btn delete-btn" title="Delete">
+                            <i class="ph ph-trash"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ===== CREATE VIDEO CARD =====
+function createVideoCard(media, id) {
+    const user = auth.currentUser;
+    const canDelete = user && (user.uid === media.uploadedBy || currentRole === 'company');
+    const filename = media.originalFilename || `video-${id}.${media.format || 'mp4'}`;
+    
+    return `
+        <div class="media-card" data-media-id="${id}" data-aos="fade-up">
+            <div class="media-preview video-preview" onclick="openMediaModal('${media.url}', 'video', '${media.caption?.replace(/'/g, "\\'") || ''}', '${media.uploaderName}')">
+                <video preload="metadata">
+                    <source src="${media.url}#t=0.1" type="video/${media.format || 'mp4'}">
+                </video>
+                <div class="video-play-btn">
+                    <i class="ph-fill ph-play-circle"></i>
+                </div>
+                ${media.duration ? `<span class="video-duration">${formatDuration(media.duration)}</span>` : ''}
+            </div>
+            <div class="media-info">
+                <div class="media-caption">${media.caption || '🎥 Video'}</div>
+                <div class="media-meta">
+                    <img src="${media.uploaderPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(media.uploaderName)}&background=6366f1&color=fff&size=32`}" 
+                         class="media-avatar" 
+                         alt="${media.uploaderName}"
+                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(media.uploaderName)}&background=6366f1&color=fff&size=32'">
+                    <span class="media-uploader">${media.uploaderName}</span>
+                    <span class="media-time">${formatTimeAgo(media.uploadedAt)}</span>
+                </div>
+                <div class="media-actions">
+                    <button onclick="downloadMedia('${media.url}', '${filename}', true)" 
+                            class="media-action-btn download-btn" title="Download">
+                        <i class="ph ph-download-simple"></i>
+                    </button>
+                    ${canDelete ? `
+                        <button onclick="deleteMedia('${id}', '${media.publicId}', '${media.type}')" 
+                                class="media-action-btn delete-btn" title="Delete">
+                            <i class="ph ph-trash"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ===== ADD UPLOAD BUTTON TO GALLERY =====
+function addUploadButtonToGallery() {
+    const gallery = document.getElementById('media-gallery');
+    if (!gallery) return;
+    
+    const uploadCard = document.createElement('div');
+    uploadCard.className = 'media-card upload-card';
+    uploadCard.setAttribute('data-aos', 'fade-up');
+    uploadCard.innerHTML = `
+        <div class="upload-placeholder" onclick="openModal('uploadModal')">
+            <i class="ph ph-upload-simple"></i>
+            <h4>Upload Media</h4>
+            <p>Share photos or videos with the community</p>
+            <small>Images: 10MB max | Videos: 50MB max</small>
+        </div>
+    `;
+    
+    gallery.insertBefore(uploadCard, gallery.firstChild);
+}
+
+// ===== OPEN MEDIA MODAL =====
+window.openMediaModal = function(url, type, caption, uploader) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-wrap media-view-modal';
+    modal.style.display = 'flex';
+    modal.onclick = function(e) {
+        if (e.target === modal) modal.remove();
+    };
+    
+    modal.innerHTML = `
+        <div class="media-view-box">
+            <button class="media-view-close" onclick="this.closest('.modal-wrap').remove()">
+                <i class="ph ph-x"></i>
+            </button>
+            ${type === 'image' 
+                ? `<img src="${url}" alt="${caption}" class="media-view-image">`
+                : `<video src="${url}" controls autoplay class="media-view-video"></video>`
+            }
+            <div class="media-view-info">
+                <p>${caption || 'No caption'}</p>
+                <small>Uploaded by ${uploader}</small>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// ===== DELETE MEDIA =====
+window.deleteMedia = async function(mediaId, publicId, resourceType) {
+    if (!confirm('Are you sure you want to delete this media?')) return;
+    
+    try {
+        // Note: For complete deletion from Cloudinary, you'd need a backend
+        // For now, we'll just mark as deleted in Firestore
+        await setDoc(doc(db, "media", mediaId), {
+            deleted: true,
+            deletedAt: serverTimestamp(),
+            deletedBy: auth.currentUser?.uid
+        }, { merge: true });
+        
+        // Remove from UI with animation
+        const mediaCard = document.querySelector(`[data-media-id="${mediaId}"]`);
+        if (mediaCard) {
+            mediaCard.style.opacity = '0';
+            mediaCard.style.transform = 'scale(0.8)';
+            setTimeout(() => {
+                mediaCard.remove();
+                showNotification('Media deleted successfully', 'success');
+                
+                // Show empty state if no media left
+                if (document.querySelectorAll('.media-card:not(.upload-card)').length === 0) {
+                    loadMediaGallery();
+                }
+            }, 300);
+        }
+        
+    } catch (error) {
+        console.error('Delete error:', error);
+        showNotification('Failed to delete media', 'error');
+    }
+}
+
+// ===== HELPER FUNCTIONS =====
+function formatTimeAgo(timestamp) {
+    if (!timestamp || !timestamp.toDate) return 'recently';
+    
+    const date = timestamp.toDate();
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return date.toLocaleDateString();
+}
+
+function formatDuration(seconds) {
+    if (!seconds) return '';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function getEmptyGalleryHTML() {
+    if (auth.currentUser) {
+        return `
+            <div class="empty-gallery" style="grid-column:1/-1; text-align:center; padding:60px 20px;">
+                <i class="ph ph-image" style="font-size:4rem; color:var(--gray); margin-bottom:20px;"></i>
+                <h3 style="margin-bottom:10px; color:var(--dark);">No Media Yet</h3>
+                <p style="color:var(--gray); margin-bottom:20px;">Be the first to share a photo or video!</p>
+                <button class="btn btn-gradient" onclick="openModal('uploadModal')">
+                    <i class="ph ph-upload-simple"></i>
+                    Upload Media
+                </button>
+            </div>
+        `;
+    }
+    return '<p style="color:var(--gray);text-align:center;grid-column:1/-1;">No media uploaded yet. <a href="#" onclick="openModal(\'authModal\')" style="color:var(--primary);">Sign in</a> to upload.</p>';
 }
 
 // Notification System
