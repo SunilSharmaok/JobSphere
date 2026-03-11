@@ -8,9 +8,7 @@ import {
     sendPasswordResetEmail,
     signOut,
     onAuthStateChanged,
-    updateProfile,
-    verifyPasswordResetCode,
-    confirmPasswordReset
+    updateProfile
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     getFirestore,
@@ -21,6 +19,7 @@ import {
     setDoc,
     doc,
     query,
+    where,
     orderBy,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -39,12 +38,12 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
-// Cloudinary Configuration - REPLACE WITH YOUR ACTUAL VALUES
+// Cloudinary Configuration
 const CLOUDINARY_CONFIG = {
-    cloudName: 'dsv4npqz3', //name
-    uploadPreset: 'jobsphere_media', // The preset you created
-    maxImageSize: 10485760, // 10MB
-    maxVideoSize: 52428800 // 50MB
+    cloudName: 'dsv4npqz3',
+    uploadPreset: 'jobsphere_media',
+    maxImageSize: 10485760,
+    maxVideoSize: 52428800
 };
 
 let currentRole = null;
@@ -69,56 +68,30 @@ window.selectRole = async function(role) {
     currentRole = role;
     localStorage.setItem('jobsphere_role', role);
     
-    // Hide role screen and show main site
     document.getElementById('role-screen').style.display = 'none';
     document.getElementById('main-site').style.display = 'block';
     
-    // Apply UI changes for the new role
     applyRoleUI(role);
-    
-    // Re-initialize AOS
     AOS.init({ duration: 1000, once: true, offset: 50 });
-    
-    // Reload jobs to show/hide apply buttons correctly
     await loadJobsFromFirestore();
-    
-    // Load media gallery
     loadMediaGallery();
-    
-    // Initialize counters
     initCounters();
     
-    // Update user interface if user is logged in
     const user = auth.currentUser;
     if (user) {
-        // Update user's role in Firestore
         try {
             const userRef = doc(db, "users", user.uid);
             await setDoc(userRef, {
                 role: role,
                 lastLogin: serverTimestamp()
             }, { merge: true });
-            
-            // Update UI with user info
             updateUIForUser(user);
-            
         } catch (error) {
             console.error('Error updating user role:', error);
         }
     }
     
-    // Show notification about role switch
     showNotification(`Switched to ${role === 'company' ? 'Company' : 'Job Seeker'} mode`, 'success');
-}
-
-function showMainSite() {
-    document.getElementById('role-screen').style.display = 'none';
-    document.getElementById('main-site').style.display = 'block';
-    applyRoleUI(currentRole);
-    AOS.init({ duration: 1000, once: true, offset: 50 });
-    loadJobsFromFirestore();
-    loadMediaGallery();
-    initCounters();
 }
 
 // ===== APPLY ROLE UI FUNCTION =====
@@ -130,54 +103,41 @@ function applyRoleUI(role) {
     const authButtons = document.querySelector('.auth-buttons');
 
     if (role === 'company') {
-        // Show company-specific elements
         if (postJobBtn) postJobBtn.style.display = 'inline-flex';
         if (navPostJob) navPostJob.style.display = 'inline-block';
-        
-        // Hide apply buttons
         applyBtns.forEach(btn => btn.style.display = 'none');
         
-        // Update any company-specific UI
         document.querySelectorAll('.job-card .btn-gradient').forEach(btn => {
             if (btn.classList.contains('apply-btn')) {
                 btn.style.display = 'none';
             }
         });
         
-        // Update Post Job button visibility in auth buttons
         const postJobAuthBtn = document.querySelector('.auth-buttons .btn-gradient');
         if (postJobAuthBtn && postJobAuthBtn.innerText.includes('Post Job')) {
             postJobAuthBtn.style.display = 'inline-flex';
         }
-        
     } else {
-        // Hide company-specific elements
         if (postJobBtn) postJobBtn.style.display = 'none';
         if (navPostJob) navPostJob.style.display = 'none';
-        
-        // Show apply buttons for job seekers
         applyBtns.forEach(btn => btn.style.display = 'inline-flex');
         
-        // Update any job seeker-specific UI
         document.querySelectorAll('.job-card .btn-gradient').forEach(btn => {
             if (btn.classList.contains('apply-btn')) {
                 btn.style.display = 'inline-flex';
             }
         });
         
-        // Hide Post Job button in auth buttons for job seekers
         const postJobAuthBtn = document.querySelector('.auth-buttons .btn-gradient');
         if (postJobAuthBtn && postJobAuthBtn.innerText.includes('Post Job')) {
             postJobAuthBtn.style.display = 'none';
         }
     }
     
-    // Update auth buttons based on user state
     const user = auth.currentUser;
     if (user) {
         updateUIForUser(user);
     } else {
-        // Update login button text or visibility if needed
         if (loginBtn) {
             loginBtn.innerText = 'Sign In';
         }
@@ -186,9 +146,7 @@ function applyRoleUI(role) {
 
 // ===== SWITCH ROLE FUNCTION =====
 window.switchRole = function() {
-    // Sign out if user is logged in
     if (auth.currentUser) {
-        // Ask for confirmation
         if (confirm('Switching role will sign you out. Continue?')) {
             signOut(auth).then(() => {
                 localStorage.removeItem('jobsphere_role');
@@ -202,7 +160,6 @@ window.switchRole = function() {
             });
         }
     } else {
-        // No user logged in, just switch role
         localStorage.removeItem('jobsphere_role');
         currentRole = null;
         document.getElementById('main-site').style.display = 'none';
@@ -211,14 +168,12 @@ window.switchRole = function() {
     }
 }
 
-// Auth state observer
+// ===== AUTH STATE OBSERVER =====
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         try {
             const userRef = doc(db, "users", user.uid);
             const userSnap = await getDoc(userRef);
-            
-            // Get current role from localStorage or existing user data
             const roleFromStorage = localStorage.getItem('jobsphere_role');
             
             if (!userSnap.exists()) {
@@ -233,15 +188,12 @@ onAuthStateChanged(auth, async (user) => {
                     authProvider: user.providerData[0]?.providerId || 'unknown'
                 });
                 
-                // Update currentRole if we have a stored role
                 if (roleFromStorage) {
                     currentRole = roleFromStorage;
                 }
             } else {
-                // Update last login and possibly role
                 const userData = userSnap.data();
                 
-                // If there's a role in storage and it's different from the stored role, update it
                 if (roleFromStorage && roleFromStorage !== userData.role) {
                     await setDoc(userRef, {
                         role: roleFromStorage,
@@ -249,12 +201,10 @@ onAuthStateChanged(auth, async (user) => {
                     }, { merge: true });
                     currentRole = roleFromStorage;
                 } else {
-                    // Just update last login
                     await setDoc(userRef, {
                         lastLogin: serverTimestamp()
                     }, { merge: true });
                     
-                    // Set currentRole from user data if not set
                     if (!currentRole && userData.role) {
                         currentRole = userData.role;
                         localStorage.setItem('jobsphere_role', currentRole);
@@ -267,21 +217,17 @@ onAuthStateChanged(auth, async (user) => {
         
         updateUIForUser(user);
         
-        // Apply role UI after user is loaded
         if (currentRole) {
             applyRoleUI(currentRole);
         }
         
-        // Reload jobs to update buttons
         loadJobsFromFirestore();
-        
     } else {
         updateUIForUser(null);
-        // Don't reset currentRole here as it might be needed for role screen
     }
 });
 
-// Google Sign In
+// ===== GOOGLE SIGN IN =====
 window.googleSignIn = async function() {
     try {
         provider.setCustomParameters({
@@ -299,7 +245,6 @@ window.googleSignIn = async function() {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         
-        // Get role from localStorage or currentRole
         const selectedRole = currentRole || localStorage.getItem('jobsphere_role') || 'user';
         
         if (!userSnap.exists()) {
@@ -320,7 +265,6 @@ window.googleSignIn = async function() {
                 lastLogin: serverTimestamp()
             }, { merge: true });
             
-            // Update role if needed
             const savedRole = localStorage.getItem('jobsphere_role');
             if (savedRole && savedRole !== userSnap.data().role) {
                 await setDoc(userRef, {
@@ -334,14 +278,11 @@ window.googleSignIn = async function() {
 
         closeModal('authModal');
         
-        // Apply role UI after successful sign in
         if (currentRole) {
             applyRoleUI(currentRole);
         }
         
-        // Reload jobs to show correct buttons
         loadJobsFromFirestore();
-
     } catch (error) {
         console.error('Google sign-in error:', error);
         
@@ -380,7 +321,7 @@ window.googleSignIn = async function() {
     }
 }
 
-// Email/Password Sign In
+// ===== EMAIL/PASSWORD SIGN IN =====
 window.handleSignIn = async function(e) {
     e.preventDefault();
     
@@ -417,14 +358,11 @@ window.handleSignIn = async function(e) {
         closeModal('authModal');
         e.target.reset();
         
-        // Apply role UI after sign in
         if (currentRole) {
             applyRoleUI(currentRole);
         }
         
-        // Reload jobs to show correct buttons
         loadJobsFromFirestore();
-
     } catch (error) {
         console.error('Sign-in error:', error);
         let message = 'Failed to sign in. ';
@@ -450,7 +388,7 @@ window.handleSignIn = async function(e) {
     }
 }
 
-// Email/Password Sign Up
+// ===== EMAIL/PASSWORD SIGN UP =====
 window.handleSignUp = async function(e) {
     e.preventDefault();
     
@@ -476,7 +414,6 @@ window.handleSignUp = async function(e) {
             displayName: name
         });
 
-        // Get role from localStorage or currentRole
         const selectedRole = currentRole || localStorage.getItem('jobsphere_role') || 'user';
 
         await setDoc(doc(db, "users", user.uid), {
@@ -494,14 +431,11 @@ window.handleSignUp = async function(e) {
         closeModal('authModal');
         e.target.reset();
         
-        // Apply role UI after sign up
         if (currentRole) {
             applyRoleUI(currentRole);
         }
         
-        // Reload jobs to show correct buttons
         loadJobsFromFirestore();
-
     } catch (error) {
         console.error('Sign-up error:', error);
         let message = 'Failed to create account. ';
@@ -527,7 +461,7 @@ window.handleSignUp = async function(e) {
     }
 }
 
-// Forgot Password
+// ===== FORGOT PASSWORD =====
 window.showForgotPassword = function() {
     closeModal('authModal');
     openModal('forgotPasswordModal');
@@ -540,7 +474,6 @@ window.handleForgotPassword = async function(e) {
     const btn = e.target.querySelector('button[type="submit"]');
     const originalText = btn.innerText;
 
-    // Validate email
     if (!email || !email.includes('@') || !email.includes('.')) {
         showNotification('Please enter a valid email address', 'error');
         return;
@@ -550,19 +483,13 @@ window.handleForgotPassword = async function(e) {
     btn.disabled = true;
 
     try {
-        console.log('Attempting to send password reset email to:', email);
-        
-        // Configure action code settings
         const actionCodeSettings = {
-            url: window.location.origin, // Redirect back to your site after reset
+            url: window.location.origin,
             handleCodeInApp: false
         };
         
         await sendPasswordResetEmail(auth, email, actionCodeSettings);
         
-        console.log('Password reset email sent successfully to:', email);
-        
-        // Show success message with clear instructions
         showNotification(
             '✅ Password reset email sent! Please check:\n\n' +
             '1. Your inbox\n' +
@@ -572,18 +499,15 @@ window.handleForgotPassword = async function(e) {
             'success'
         );
         
-        // Close modal after 3 seconds
         setTimeout(() => {
             closeModal('forgotPasswordModal');
             e.target.reset();
             
-            // Show additional info
             showNotification(
                 '📧 Email sent to ' + email + '. Check spam if not in inbox.', 
                 'info'
             );
         }, 3000);
-
     } catch (error) {
         console.error('Password reset error details:', error);
         
@@ -591,7 +515,6 @@ window.handleForgotPassword = async function(e) {
         switch (error.code) {
             case 'auth/user-not-found':
                 message = 'No account found with this email. Please sign up first.';
-                // Offer to switch to sign up
                 setTimeout(() => {
                     if (confirm('No account found. Would you like to sign up instead?')) {
                         closeModal('forgotPasswordModal');
@@ -620,7 +543,7 @@ window.handleForgotPassword = async function(e) {
     }
 }
 
-// Toggle between Sign In and Sign Up forms
+// ===== TOGGLE AUTH MODE =====
 window.toggleAuthMode = function(mode) {
     const signinForm = document.getElementById('signinForm');
     const signupForm = document.getElementById('signupForm');
@@ -643,7 +566,7 @@ window.toggleAuthMode = function(mode) {
     }
 }
 
-// Sign Out
+// ===== SIGN OUT =====
 window.googleSignOut = async function() {
     try {
         await signOut(auth);
@@ -657,7 +580,7 @@ window.googleSignOut = async function() {
     }
 }
 
-// Update UI based on user state
+// ===== UPDATE UI BASED ON USER STATE =====
 function updateUIForUser(user) {
     const authButtons = document.querySelector('.auth-buttons');
     if (!authButtons) return;
@@ -669,10 +592,24 @@ function updateUIForUser(user) {
         const roleBadge = currentRole === 'company'
             ? `<span class="role-badge company">Company</span>`
             : `<span class="role-badge user">Job Seeker</span>`;
-        const dropdownItems = currentRole === 'company'
-            ? `<a href="#" onclick="openModal('postJobModal')"><i class="ph ph-briefcase" style="margin-right:8px;"></i>Post a Job</a>
-               <a href="#" onclick="openModal('uploadModal')"><i class="ph ph-image" style="margin-right:8px;"></i>Upload Media</a>`
-            : `<a href="#" onclick="openModal('uploadModal')"><i class="ph ph-image" style="margin-right:8px;"></i>Upload Media</a>`;
+        
+        let dropdownItems = '';
+        
+        if (currentRole === 'company') {
+            dropdownItems = `
+                <a href="#" onclick="openModal('postJobModal')"><i class="ph ph-briefcase" style="margin-right:8px;"></i>Post a Job</a>
+                <a href="#" onclick="openModal('uploadModal')"><i class="ph ph-image" style="margin-right:8px;"></i>Upload Media</a>
+            `;
+        } else {
+            dropdownItems = `
+                <a href="#" onclick="openProfileModal()"><i class="ph ph-user" style="margin-right:8px;"></i>My Profile</a>
+                <a href="#" onclick="openModal('savedJobsModal'); loadSavedJobs()"><i class="ph ph-bookmark-simple" style="margin-right:8px;"></i>Saved Jobs</a>
+                <a href="#" onclick="openModal('applicationsModal'); loadApplications()"><i class="ph ph-file-text" style="margin-right:8px;"></i>My Applications</a>
+                <a href="#" onclick="openModal('jobAlertsModal')"><i class="ph ph-bell" style="margin-right:8px;"></i>Job Alerts</a>
+                <a href="#" onclick="openModal('skillAssessmentModal')"><i class="ph ph-certificate" style="margin-right:8px;"></i>Skill Assessments</a>
+                <a href="#" onclick="openModal('uploadModal')"><i class="ph ph-image" style="margin-right:8px;"></i>Upload Media</a>
+            `;
+        }
 
         authButtons.innerHTML = `
             <button class="switch-role-btn" onclick="switchRole()">
@@ -708,7 +645,7 @@ function updateUIForUser(user) {
     }
 }
 
-// Scroll effect for navbar
+// ===== SCROLL EFFECT FOR NAVBAR =====
 window.addEventListener('scroll', () => {
     const navbar = document.getElementById('navbar');
     if (!navbar) return;
@@ -724,7 +661,7 @@ window.addEventListener('scroll', () => {
     }
 });
 
-// Modal functions
+// ===== MODAL FUNCTIONS =====
 window.openModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -735,6 +672,8 @@ window.openModal = function(modalId) {
             toggleAuthMode('signin');
             document.getElementById('signinForm')?.reset();
             document.getElementById('signupForm')?.reset();
+        } else if (modalId === 'profileModal') {
+            openProfileModal();
         }
     }
 }
@@ -754,7 +693,7 @@ window.onclick = function(event) {
     }
 }
 
-// Job search filter
+// ===== JOB SEARCH FILTER =====
 window.filterJobs = function() {
     const input = document.getElementById('jobSearch').value.toLowerCase();
     const cards = document.querySelectorAll('.job-card');
@@ -766,7 +705,7 @@ window.filterJobs = function() {
     document.getElementById('jobs').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Open apply modal
+// ===== OPEN APPLY MODAL =====
 window.openApplyModal = function(title) {
     if (currentRole === 'company') {
         showNotification('Companies cannot apply for jobs', 'info');
@@ -792,7 +731,7 @@ window.openApplyModal = function(title) {
     openModal('applyModal');
 }
 
-// Handle job application
+// ===== HANDLE JOB APPLICATION =====
 window.handleApply = async function(e) {
     e.preventDefault();
     const btn = e.target.querySelector('button[type="submit"]');
@@ -809,6 +748,7 @@ window.handleApply = async function(e) {
             applicantEmail: document.getElementById('applicantEmail').value,
             coverLetter: e.target.querySelector('textarea').value,
             userId: user ? user.uid : null,
+            status: 'Applied',
             appliedAt: serverTimestamp()
         });
 
@@ -823,7 +763,6 @@ window.handleApply = async function(e) {
             btn.disabled = false;
             showNotification('Application submitted successfully!', 'success');
         }, 1500);
-
     } catch (error) {
         console.error('Application error:', error);
         showNotification('Failed to submit. Try again.', 'error');
@@ -832,7 +771,7 @@ window.handleApply = async function(e) {
     }
 }
 
-// Post Job
+// ===== POST JOB =====
 window.handleJobPost = async function(e) {
     e.preventDefault();
     const user = auth.currentUser;
@@ -870,7 +809,6 @@ window.handleJobPost = async function(e) {
         closeModal('postJobModal');
         e.target.reset();
         loadJobsFromFirestore();
-
     } catch (error) {
         console.error('Job post error:', error);
         showNotification('Failed to post job. Try again.', 'error');
@@ -880,7 +818,7 @@ window.handleJobPost = async function(e) {
     }
 }
 
-// Load Jobs from Firestore
+// ===== LOAD JOBS FROM FIRESTORE =====
 async function loadJobsFromFirestore() {
     const container = document.getElementById('job-list-container');
     if (!container) return;
@@ -897,16 +835,20 @@ async function loadJobsFromFirestore() {
         container.innerHTML = '';
         snapshot.forEach(docSnap => {
             const job = docSnap.data();
+            const jobId = docSnap.id;
             
-            // Check if apply button should be shown based on role
             const showApplyButton = currentRole !== 'company';
             
             const applyBtn = showApplyButton
                 ? `<button class="btn btn-gradient apply-btn" onclick="openApplyModal('${job.title.replace(/'/g, "\\'")}')">Apply Now</button>`
                 : '';
 
+            const saveBtn = showApplyButton && auth.currentUser
+                ? `<button class="btn btn-outline save-btn" onclick="saveJob('${jobId}', '${job.title.replace(/'/g, "\\'")}')" style="margin-right: 10px;"><i class="ph ph-bookmark-simple"></i> Save</button>`
+                : '';
+
             container.innerHTML += `
-                <div class="job-card" data-title="${job.title}">
+                <div class="job-card" data-title="${job.title}" data-job-id="${jobId}">
                     <div class="company-logo">
                         <i class="ph-fill ph-buildings"></i>
                     </div>
@@ -920,23 +862,28 @@ async function loadJobsFromFirestore() {
                     </div>
                     <div class="job-right">
                         <span class="salary-range">${job.salary}</span>
-                        ${applyBtn}
+                        <div style="display: flex; gap: 10px;">
+                            ${saveBtn}
+                            ${applyBtn}
+                        </div>
                     </div>
                 </div>
             `;
         });
-
     } catch (error) {
         console.error('Error loading jobs:', error);
         container.innerHTML = getSampleJobsHTML();
     }
 }
 
-// Sample jobs HTML (fallback)
+// ===== SAMPLE JOBS HTML =====
 function getSampleJobsHTML() {
     const showApplyButton = currentRole !== 'company';
     const applyButtonHTML = showApplyButton 
         ? '<button class="btn btn-gradient apply-btn" onclick="openApplyModal(\'Senior Product Designer\')">Apply Now</button>'
+        : '';
+    const saveButtonHTML = showApplyButton && auth.currentUser
+        ? '<button class="btn btn-outline save-btn" onclick="saveJob(\'sample1\', \'Senior Product Designer\')"><i class="ph ph-bookmark-simple"></i> Save</button>'
         : '';
     
     return `
@@ -955,7 +902,10 @@ function getSampleJobsHTML() {
             </div>
             <div class="job-right">
                 <span class="salary-range">$120k - $140k</span>
-                ${applyButtonHTML}
+                <div style="display: flex; gap: 10px;">
+                    ${saveButtonHTML}
+                    ${applyButtonHTML}
+                </div>
             </div>
         </div>
 
@@ -974,7 +924,10 @@ function getSampleJobsHTML() {
             </div>
             <div class="job-right">
                 <span class="salary-range">$90k - $110k</span>
-                ${applyButtonHTML.replace('Senior Product Designer', 'Frontend Developer')}
+                <div style="display: flex; gap: 10px;">
+                    ${saveButtonHTML.replace('Senior Product Designer', 'Frontend Developer')}
+                    ${applyButtonHTML.replace('Senior Product Designer', 'Frontend Developer')}
+                </div>
             </div>
         </div>
 
@@ -993,10 +946,546 @@ function getSampleJobsHTML() {
             </div>
             <div class="job-right">
                 <span class="salary-range">$70k - $95k</span>
-                ${applyButtonHTML.replace('Senior Product Designer', 'Marketing Manager')}
+                <div style="display: flex; gap: 10px;">
+                    ${saveButtonHTML.replace('Senior Product Designer', 'Marketing Manager')}
+                    ${applyButtonHTML.replace('Senior Product Designer', 'Marketing Manager')}
+                </div>
             </div>
         </div>
     `;
+}
+
+// ===== PROFILE MANAGEMENT =====
+
+window.openProfileModal = function() {
+    const user = auth.currentUser;
+    if (!user) {
+        showNotification('Please sign in to create your profile', 'info');
+        openModal('authModal');
+        return;
+    }
+
+    if (currentRole === 'company') {
+        showNotification('Company accounts cannot create job seeker profiles', 'info');
+        return;
+    }
+
+    loadUserProfile();
+    openModal('profileModal');
+}
+
+async function loadUserProfile() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+        const userRef = doc(db, "userProfiles", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        // Clear existing dynamic fields
+        document.getElementById('workExperienceContainer').innerHTML = '';
+        document.getElementById('educationContainer').innerHTML = '';
+        document.getElementById('languagesContainer').innerHTML = '';
+        document.getElementById('certificationsContainer').innerHTML = '';
+
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            
+            document.getElementById('fullName').value = data.fullName || '';
+            document.getElementById('phoneNumber').value = data.phoneNumber || '';
+            document.getElementById('profileEmail').value = user.email || '';
+            document.getElementById('location').value = data.location || '';
+            document.getElementById('dob').value = data.dob || '';
+            document.getElementById('summary').value = data.summary || '';
+            document.getElementById('skills').value = data.skills ? data.skills.join(', ') : '';
+            document.getElementById('linkedin').value = data.linkedin || '';
+            document.getElementById('github').value = data.github || '';
+            document.getElementById('portfolio').value = data.portfolio || '';
+            document.getElementById('desiredTitle').value = data.desiredTitle || '';
+            document.getElementById('employmentType').value = data.employmentType || '';
+            document.getElementById('expectedSalary').value = data.expectedSalary || '';
+
+            if (data.workExperience && data.workExperience.length > 0) {
+                data.workExperience.forEach(exp => addWorkExperience(exp));
+            } else {
+                addWorkExperience();
+            }
+
+            if (data.education && data.education.length > 0) {
+                data.education.forEach(edu => addEducation(edu));
+            } else {
+                addEducation();
+            }
+
+            if (data.languages && data.languages.length > 0) {
+                data.languages.forEach(lang => addLanguage(lang));
+            } else {
+                addLanguage();
+            }
+
+            if (data.certifications && data.certifications.length > 0) {
+                data.certifications.forEach(cert => addCertification(cert));
+            }
+
+            if (data.photoURL) {
+                document.getElementById('profilePhotoPreview').src = data.photoURL;
+            }
+
+            if (data.resumeURL) {
+                document.getElementById('resumeInfo').style.display = 'block';
+                document.getElementById('resumeName').textContent = data.resumeName || 'Resume uploaded';
+            }
+
+            calculateProfileStrength(data);
+        } else {
+            addWorkExperience();
+            addEducation();
+            addLanguage();
+            calculateProfileStrength({});
+        }
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        showNotification('Error loading profile', 'error');
+    }
+}
+
+function calculateProfileStrength(data = {}) {
+    let strength = 0;
+    const totalFields = 12;
+    let completed = 0;
+
+    const fields = [
+        data.fullName, data.phoneNumber, data.location, data.summary,
+        data.skills, data.workExperience, data.education, data.languages,
+        data.desiredTitle, data.employmentType, data.expectedSalary, data.resumeURL
+    ];
+
+    fields.forEach(field => {
+        if (field && (Array.isArray(field) ? field.length > 0 : true)) {
+            completed++;
+        }
+    });
+
+    strength = Math.round((completed / totalFields) * 100);
+    
+    const strengthElement = document.getElementById('profileStrength');
+    const progressElement = document.getElementById('profileProgress');
+    
+    if (strengthElement) strengthElement.textContent = strength + '%';
+    if (progressElement) progressElement.style.width = strength + '%';
+
+    const tips = document.getElementById('profileTips');
+    if (tips) {
+        if (strength < 100) {
+            tips.innerHTML = getProfileTips(data);
+        } else {
+            tips.innerHTML = '<span>✨ Perfect profile! You\'re ready to apply!</span>';
+        }
+    }
+}
+
+function getProfileTips(data) {
+    const tips = [];
+    if (!data.fullName) tips.push('📝 Add your full name');
+    if (!data.phoneNumber) tips.push('📱 Add your phone number');
+    if (!data.location) tips.push('📍 Add your location');
+    if (!data.summary) tips.push('✍️ Write a professional summary');
+    if (!data.skills || data.skills.length === 0) tips.push('💡 Add your skills');
+    if (!data.workExperience || data.workExperience.length === 0) tips.push('💼 Add work experience');
+    if (!data.education || data.education.length === 0) tips.push('🎓 Add your education');
+    if (!data.languages || data.languages.length === 0) tips.push('🗣️ Add languages');
+    if (!data.desiredTitle) tips.push('🎯 Add desired job title');
+    if (!data.employmentType) tips.push('⚡ Select employment type');
+    if (!data.expectedSalary) tips.push('💰 Add expected salary');
+    if (!data.resumeURL) tips.push('📄 Upload your resume');
+
+    return tips.map(tip => `<span>${tip}</span>`).join(' ');
+}
+
+window.previewProfilePhoto = function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profilePhotoPreview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+window.addWorkExperience = function(data = null) {
+    const container = document.getElementById('workExperienceContainer');
+    const id = 'work_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    const html = `
+        <div id="${id}" class="dynamic-field" style="background: white; padding: 20px; border-radius: var(--radius-md); margin-bottom: 15px; position: relative;">
+            <button type="button" onclick="removeField('${id}')" class="remove-field" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--gray); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <input type="text" placeholder="Job Title" value="${data?.title || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="Company" value="${data?.company || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="Location" value="${data?.location || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="Start Date" value="${data?.startDate || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="End Date" value="${data?.endDate || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <textarea placeholder="Description" rows="2" style="grid-column: 1/-1; padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">${data?.description || ''}</textarea>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+window.addEducation = function(data = null) {
+    const container = document.getElementById('educationContainer');
+    const id = 'edu_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    const html = `
+        <div id="${id}" class="dynamic-field" style="background: white; padding: 20px; border-radius: var(--radius-md); margin-bottom: 15px; position: relative;">
+            <button type="button" onclick="removeField('${id}')" class="remove-field" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--gray); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <input type="text" placeholder="Degree" value="${data?.degree || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="Institution" value="${data?.institution || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="Field of Study" value="${data?.field || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="Graduation Year" value="${data?.year || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+window.addLanguage = function(data = null) {
+    const container = document.getElementById('languagesContainer');
+    const id = 'lang_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    const html = `
+        <div id="${id}" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+            <input type="text" placeholder="Language" value="${data?.language || ''}" style="flex: 2; padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+            <select style="flex: 1; padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <option value="basic" ${data?.proficiency === 'basic' ? 'selected' : ''}>Basic</option>
+                <option value="conversational" ${data?.proficiency === 'conversational' ? 'selected' : ''}>Conversational</option>
+                <option value="professional" ${data?.proficiency === 'professional' ? 'selected' : ''}>Professional</option>
+                <option value="native" ${data?.proficiency === 'native' ? 'selected' : ''}>Native</option>
+            </select>
+            <button type="button" onclick="removeField('${id}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;">&times;</button>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+window.addCertification = function(data = null) {
+    const container = document.getElementById('certificationsContainer');
+    const id = 'cert_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    const html = `
+        <div id="${id}" class="dynamic-field" style="background: white; padding: 20px; border-radius: var(--radius-md); margin-bottom: 15px; position: relative;">
+            <button type="button" onclick="removeField('${id}')" class="remove-field" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--gray); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <input type="text" placeholder="Certification Name" value="${data?.name || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="Issuing Organization" value="${data?.issuer || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="Issue Date" value="${data?.issueDate || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+                <input type="text" placeholder="Expiration Date" value="${data?.expiryDate || ''}" style="padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;">
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+window.removeField = function(id) {
+    document.getElementById(id)?.remove();
+}
+
+window.handleProfileSave = async function(e) {
+    e.preventDefault();
+    
+    const user = auth.currentUser;
+    if (!user) {
+        showNotification('Please sign in to save your profile', 'info');
+        return;
+    }
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    btn.disabled = true;
+
+    try {
+        const workExperience = [];
+        document.querySelectorAll('#workExperienceContainer > div').forEach(div => {
+            const inputs = div.querySelectorAll('input, textarea');
+            if (inputs[0]?.value) {
+                workExperience.push({
+                    title: inputs[0]?.value || '',
+                    company: inputs[1]?.value || '',
+                    location: inputs[2]?.value || '',
+                    startDate: inputs[3]?.value || '',
+                    endDate: inputs[4]?.value || '',
+                    description: inputs[5]?.value || ''
+                });
+            }
+        });
+
+        const education = [];
+        document.querySelectorAll('#educationContainer > div').forEach(div => {
+            const inputs = div.querySelectorAll('input');
+            if (inputs[0]?.value) {
+                education.push({
+                    degree: inputs[0]?.value || '',
+                    institution: inputs[1]?.value || '',
+                    field: inputs[2]?.value || '',
+                    year: inputs[3]?.value || ''
+                });
+            }
+        });
+
+        const languages = [];
+        document.querySelectorAll('#languagesContainer > div').forEach(div => {
+            const inputs = div.querySelectorAll('input, select');
+            if (inputs[0]?.value) {
+                languages.push({
+                    language: inputs[0]?.value || '',
+                    proficiency: inputs[1]?.value || ''
+                });
+            }
+        });
+
+        const certifications = [];
+        document.querySelectorAll('#certificationsContainer > div').forEach(div => {
+            const inputs = div.querySelectorAll('input');
+            if (inputs[0]?.value) {
+                certifications.push({
+                    name: inputs[0]?.value || '',
+                    issuer: inputs[1]?.value || '',
+                    issueDate: inputs[2]?.value || '',
+                    expiryDate: inputs[3]?.value || ''
+                });
+            }
+        });
+
+        const skillsInput = document.getElementById('skills').value;
+        const skills = skillsInput.split(',').map(s => s.trim()).filter(s => s);
+
+        const profileData = {
+            fullName: document.getElementById('fullName').value,
+            phoneNumber: document.getElementById('phoneNumber').value,
+            location: document.getElementById('location').value,
+            dob: document.getElementById('dob').value,
+            summary: document.getElementById('summary').value,
+            workExperience: workExperience,
+            education: education,
+            skills: skills,
+            languages: languages,
+            certifications: certifications,
+            linkedin: document.getElementById('linkedin').value,
+            github: document.getElementById('github').value,
+            portfolio: document.getElementById('portfolio').value,
+            desiredTitle: document.getElementById('desiredTitle').value,
+            employmentType: document.getElementById('employmentType').value,
+            expectedSalary: document.getElementById('expectedSalary').value,
+            updatedAt: serverTimestamp()
+        };
+
+        const photoFile = document.getElementById('profilePhoto').files[0];
+        if (photoFile) {
+            profileData.photoURL = document.getElementById('profilePhotoPreview').src;
+        }
+
+        const resumeFile = document.getElementById('resumeFile').files[0];
+        if (resumeFile) {
+            profileData.resumeName = resumeFile.name;
+            profileData.resumeURL = URL.createObjectURL(resumeFile);
+        }
+
+        await setDoc(doc(db, "userProfiles", user.uid), profileData, { merge: true });
+
+        btn.innerHTML = '<i class="ph ph-check-circle"></i> Saved!';
+        btn.style.background = 'var(--success)';
+
+        setTimeout(() => {
+            closeModal('profileModal');
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+            btn.disabled = false;
+            showNotification('Profile saved successfully!', 'success');
+        }, 1500);
+    } catch (error) {
+        console.error('Error saving profile:', error);
+        showNotification('Failed to save profile. Please try again.', 'error');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// ===== JOB ALERTS =====
+
+window.handleJobAlert = async function(e) {
+    e.preventDefault();
+    
+    const user = auth.currentUser;
+    if (!user) {
+        showNotification('Please sign in to create job alerts', 'info');
+        return;
+    }
+
+    const inputs = e.target.querySelectorAll('input, select');
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerText;
+
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Creating...';
+    btn.disabled = true;
+
+    try {
+        await addDoc(collection(db, "jobAlerts"), {
+            name: inputs[0].value,
+            keywords: inputs[1].value,
+            location: inputs[2].value,
+            frequency: inputs[3].value,
+            userId: user.uid,
+            userEmail: user.email,
+            createdAt: serverTimestamp(),
+            active: true
+        });
+
+        btn.innerHTML = '<i class="ph ph-check-circle"></i> Created!';
+        btn.style.background = 'var(--success)';
+
+        setTimeout(() => {
+            closeModal('jobAlertsModal');
+            e.target.reset();
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+            btn.disabled = false;
+            showNotification('Job alert created successfully!', 'success');
+        }, 1500);
+    } catch (error) {
+        console.error('Error creating job alert:', error);
+        showNotification('Failed to create job alert', 'error');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// ===== SAVE JOB FUNCTION =====
+
+window.saveJob = async function(jobId, jobTitle) {
+    const user = auth.currentUser;
+    if (!user) {
+        showNotification('Please sign in to save jobs', 'info');
+        openModal('authModal');
+        return;
+    }
+
+    try {
+        const savedJobRef = doc(db, "savedJobs", `${user.uid}_${jobId}`);
+        await setDoc(savedJobRef, {
+            userId: user.uid,
+            jobId: jobId,
+            jobTitle: jobTitle,
+            savedAt: serverTimestamp()
+        });
+
+        showNotification('Job saved successfully!', 'success');
+    } catch (error) {
+        console.error('Error saving job:', error);
+        showNotification('Failed to save job', 'error');
+    }
+}
+
+// ===== LOAD SAVED JOBS =====
+
+window.loadSavedJobs = async function() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const container = document.getElementById('savedJobsList');
+    if (!container) return;
+    
+    container.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="ph ph-spinner ph-spin" style="font-size: 2rem;"></i><p>Loading saved jobs...</p></div>';
+
+    try {
+        const q = query(collection(db, "savedJobs"), where("userId", "==", user.uid));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="ph ph-bookmark-simple" style="font-size: 3rem; color: var(--gray); margin-bottom: 20px;"></i>
+                    <h4 style="margin-bottom: 10px;">No saved jobs yet</h4>
+                    <p style="color: var(--gray); margin-bottom: 20px;">Start browsing and save jobs you're interested in</p>
+                    <button class="btn btn-gradient" onclick="closeModal('savedJobsModal'); document.getElementById('jobs').scrollIntoView({behavior: 'smooth'});">
+                        Browse Jobs
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = '';
+        snapshot.forEach(docSnap => {
+            const saved = docSnap.data();
+            container.innerHTML += `
+                <div style="background: var(--light-gray); padding: 20px; border-radius: var(--radius-md); margin-bottom: 15px;">
+                    <h4 style="margin-bottom: 10px;">${saved.jobTitle}</h4>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button class="btn btn-gradient" onclick="applyForSavedJob('${saved.jobId}')" style="padding: 8px 16px;">Apply Now</button>
+                        <button class="btn btn-outline" onclick="removeSavedJob('${docSnap.id}')" style="padding: 8px 16px;">Remove</button>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (error) {
+        console.error('Error loading saved jobs:', error);
+        container.innerHTML = '<p style="color: var(--error); text-align: center;">Error loading saved jobs</p>';
+    }
+}
+
+// ===== LOAD APPLICATIONS =====
+
+window.loadApplications = async function() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const container = document.getElementById('applicationsList');
+    if (!container) return;
+    
+    container.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="ph ph-spinner ph-spin" style="font-size: 2rem;"></i><p>Loading applications...</p></div>';
+
+    try {
+        const q = query(collection(db, "applications"), where("userId", "==", user.uid), orderBy("appliedAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="ph ph-file-text" style="font-size: 3rem; color: var(--gray); margin-bottom: 20px;"></i>
+                    <h4 style="margin-bottom: 10px;">No applications yet</h4>
+                    <p style="color: var(--gray);">Start applying to jobs and track them here</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = '';
+        snapshot.forEach(docSnap => {
+            const app = docSnap.data();
+            const status = app.status || 'Applied';
+            const statusColor = status === 'Applied' ? '#3b82f6' : status === 'Reviewed' ? '#f59e0b' : status === 'Interview' ? '#10b981' : '#6b7280';
+            
+            container.innerHTML += `
+                <div style="background: var(--light-gray); padding: 20px; border-radius: var(--radius-md); margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                        <h4>${app.jobTitle}</h4>
+                        <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">${status}</span>
+                    </div>
+                    <p style="color: var(--gray); font-size: 0.9rem;">Applied: ${formatTimeAgo(app.appliedAt)}</p>
+                </div>
+            `;
+        });
+    } catch (error) {
+        console.error('Error loading applications:', error);
+        container.innerHTML = '<p style="color: var(--error); text-align: center;">Error loading applications</p>';
+    }
 }
 
 // ===== MEDIA UPLOAD WITH CLOUDINARY =====
@@ -1019,7 +1508,6 @@ window.handleMediaUpload = async function(e) {
         return;
     }
 
-    // Check file type and size
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
     
@@ -1037,31 +1525,25 @@ window.handleMediaUpload = async function(e) {
         return;
     }
 
-    // Show uploading state
     const btn = e.target.querySelector('button[type="submit"]');
     const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Uploading...';
     btn.disabled = true;
 
-    // Create progress indicator
     const progressDiv = document.createElement('div');
     progressDiv.className = 'upload-progress';
     progressDiv.innerHTML = '<div class="progress-bar" style="width:0%"></div>';
     e.target.appendChild(progressDiv);
 
     try {
-        // Create form data for Cloudinary
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
         formData.append('folder', 'jobsphere_media');
-        
-        // Add tags for easy filtering
         formData.append('tags', `user_${user.uid},jobsphere,${isImage ? 'image' : 'video'}`);
         
         const resourceType = isVideo ? 'video' : 'image';
         
-        // Upload to Cloudinary
         const response = await fetch(
             `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/${resourceType}/upload`,
             {
@@ -1076,13 +1558,11 @@ window.handleMediaUpload = async function(e) {
 
         const data = await response.json();
 
-        // Get video duration if it's a video
         let duration = null;
         if (isVideo && data.duration) {
             duration = data.duration;
         }
 
-        // Save media info to Firestore
         await addDoc(collection(db, "media"), {
             url: data.secure_url,
             publicId: data.public_id,
@@ -1100,14 +1580,11 @@ window.handleMediaUpload = async function(e) {
             uploadedAt: serverTimestamp()
         });
 
-        // Show success message
         btn.innerHTML = '<i class="ph ph-check-circle"></i> Uploaded!';
         btn.style.background = 'var(--success)';
         
-        // Remove progress bar
         progressDiv.remove();
         
-        // Close modal and reset form
         setTimeout(() => {
             closeModal('uploadModal');
             fileInput.value = '';
@@ -1115,12 +1592,9 @@ window.handleMediaUpload = async function(e) {
             btn.innerHTML = originalText;
             btn.style.background = '';
             btn.disabled = false;
-            
-            // Reload media gallery
             loadMediaGallery();
             showNotification('Media uploaded successfully!', 'success');
         }, 1500);
-
     } catch (error) {
         console.error('Upload error:', error);
         showNotification('Upload failed. Please try again.', 'error');
@@ -1135,12 +1609,10 @@ window.downloadMedia = async function(url, filename, isVideo = false) {
     try {
         showNotification('Starting download...', 'info');
         
-        // For Cloudinary URLs, add fl_attachment flag to force download
         const downloadUrl = url.includes('cloudinary.com') 
             ? url.replace('/upload/', '/upload/fl_attachment/')
             : url;
         
-        // Create temporary link and trigger download
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = filename || 'jobsphere-media';
@@ -1183,11 +1655,9 @@ async function loadMediaGallery() {
             }
         });
 
-        // Add upload button if user is logged in
         if (auth.currentUser) {
             addUploadButtonToGallery();
         }
-
     } catch (error) {
         console.error('Error loading media:', error);
         gallery.innerHTML = '<p style="color:var(--gray);text-align:center;grid-column:1/-1;">Error loading media. Please refresh.</p>';
@@ -1330,15 +1800,12 @@ window.deleteMedia = async function(mediaId, publicId, resourceType) {
     if (!confirm('Are you sure you want to delete this media?')) return;
     
     try {
-        // Note: For complete deletion from Cloudinary, you'd need a backend
-        // For now, we'll just mark as deleted in Firestore
         await setDoc(doc(db, "media", mediaId), {
             deleted: true,
             deletedAt: serverTimestamp(),
             deletedBy: auth.currentUser?.uid
         }, { merge: true });
         
-        // Remove from UI with animation
         const mediaCard = document.querySelector(`[data-media-id="${mediaId}"]`);
         if (mediaCard) {
             mediaCard.style.opacity = '0';
@@ -1347,13 +1814,11 @@ window.deleteMedia = async function(mediaId, publicId, resourceType) {
                 mediaCard.remove();
                 showNotification('Media deleted successfully', 'success');
                 
-                // Show empty state if no media left
                 if (document.querySelectorAll('.media-card:not(.upload-card)').length === 0) {
                     loadMediaGallery();
                 }
             }, 300);
         }
-        
     } catch (error) {
         console.error('Delete error:', error);
         showNotification('Failed to delete media', 'error');
@@ -1398,7 +1863,7 @@ function getEmptyGalleryHTML() {
     return '<p style="color:var(--gray);text-align:center;grid-column:1/-1;">No media uploaded yet. <a href="#" onclick="openModal(\'authModal\')" style="color:var(--primary);">Sign in</a> to upload.</p>';
 }
 
-// Notification System
+// ===== NOTIFICATION SYSTEM =====
 function showNotification(message, type = 'success') {
     const colors = { success: '#10b981', error: '#ef4444', info: '#3b82f6', warning: '#f59e0b' };
     const notification = document.createElement('div');
@@ -1422,7 +1887,7 @@ function showNotification(message, type = 'success') {
     }, 5000);
 }
 
-// Counter Animation
+// ===== COUNTER ANIMATION =====
 function initCounters() {
     const counters = document.querySelectorAll('.stat-item h3');
     counters.forEach(counter => {
@@ -1451,7 +1916,7 @@ function initCounters() {
     });
 }
 
-// Add CSS for auth toggle buttons and spinner
+// ===== ADD CSS STYLES =====
 const style = document.createElement('style');
 style.textContent = `
     .auth-toggle.active {
@@ -1509,39 +1974,27 @@ style.textContent = `
         border-color: #e2e8f0 !important;
         background: white !important;
     }
+    .dynamic-field {
+        background: white;
+        padding: 20px;
+        border-radius: var(--radius-md);
+        margin-bottom: 15px;
+        position: relative;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    .dynamic-field .remove-field {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        color: var(--gray);
+        cursor: pointer;
+        font-size: 1.2rem;
+        transition: color 0.3s ease;
+    }
+    .dynamic-field .remove-field:hover {
+        color: #ef4444;
+    }
 `;
 document.head.appendChild(style);
-
-// Debug function for password reset
-window.debugPasswordReset = async function() {
-    const email = prompt("Enter email to test password reset:", "test@example.com");
-    if (!email) return;
-    
-    console.log("🔍 Testing password reset for:", email);
-    
-    try {
-        const actionCodeSettings = {
-            url: window.location.origin,
-            handleCodeInApp: false
-        };
-        
-        await sendPasswordResetEmail(auth, email, actionCodeSettings);
-        
-        console.log("✅ Email sent successfully to:", email);
-        console.log("📧 From: noreply@jobsphere-ab925.firebaseapp.com");
-        console.log("📋 Check these folders:");
-        console.log("   - Inbox");
-        console.log("   - Spam/Junk");
-        console.log("   - Promotions (Gmail)");
-        console.log("   - Social (Gmail)");
-        
-        alert(`✅ Reset email sent to ${email}!\n\nPlease check:\n1. Inbox\n2. Spam folder\n3. Promotions tab (Gmail)\n\nEmail from: noreply@jobsphere-ab925.firebaseapp.com`);
-        
-    } catch (error) {
-        console.error("❌ Error sending email:", error);
-        console.error("Error code:", error.code);
-        console.error("Error message:", error.message);
-        
-        alert(`❌ Error: ${error.message}\n\nCheck console for details.`);
-    }
-}

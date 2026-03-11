@@ -1399,3 +1399,479 @@ button:disabled {
         font-size: 0.9rem;
     }
 }
+
+
+
+/* Profile Modal Styles */
+#profileModal .modal-box {
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 2rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--light-gray);
+}
+
+#profileModal .modal-box::-webkit-scrollbar {
+    width: 8px;
+}
+
+#profileModal .modal-box::-webkit-scrollbar-track {
+    background: var(--light-gray);
+    border-radius: 4px;
+}
+
+#profileModal .modal-box::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+
+#profileModal .modal-box::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+/* Profile Photo Upload */
+.profile-photo-upload {
+    position: relative;
+    display: inline-block;
+}
+
+.profile-photo-preview {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid white;
+    box-shadow: var(--shadow-lg);
+}
+
+.profile-photo-upload label {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: var(--primary);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 3px solid white;
+    transition: all 0.3s ease;
+}
+
+.profile-photo-upload label:hover {
+    background: var(--primary-dark);
+    transform: scale(1.1);
+}
+
+/* Skills Tags */
+.skills-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.skill-tag {
+    background: var(--gradient-primary);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.skill-tag i {
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.skill-tag i:hover {
+    opacity: 1;
+}
+
+/* Resume Upload Area */
+.resume-upload-area {
+    border: 2px dashed var(--primary);
+    border-radius: var(--radius-lg);
+    padding: 30px;
+    text-align: center;
+    background: rgba(99, 102, 241, 0.05);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.resume-upload-area:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: var(--accent);
+}
+
+.resume-upload-area i {
+    font-size: 3rem;
+    color: var(--primary);
+    margin-bottom: 15px;
+}
+
+.resume-upload-area p {
+    color: var(--dark);
+    margin-bottom: 10px;
+}
+
+.resume-upload-area small {
+    color: var(--gray);
+}
+
+.resume-info {
+    display: none;
+    margin-top: 15px;
+    padding: 10px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.resume-info i {
+    color: var(--success);
+    margin-right: 8px;
+}
+
+/* Form Sections */
+.profile-section {
+    background: var(--light-gray);
+    padding: 25px;
+    border-radius: var(--radius-lg);
+    transition: all 0.3s ease;
+}
+
+.profile-section:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+.profile-section h4 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    color: var(--dark);
+}
+
+.profile-section h4 i {
+    color: var(--primary);
+}
+
+/* Dynamic Fields */
+.dynamic-field {
+    background: white;
+    padding: 20px;
+    border-radius: var(--radius-md);
+    margin-bottom: 15px;
+    position: relative;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.dynamic-field .remove-field {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: color 0.3s ease;
+}
+
+.dynamic-field .remove-field:hover {
+    color: #ef4444;
+}
+
+/* Job Alert Card */
+.job-alert-card {
+    background: var(--light-gray);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.job-alert-card:hover {
+    transform: translateX(5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.job-alert-card h4 {
+    margin-bottom: 10px;
+    color: var(--dark);
+}
+
+.job-alert-card p {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.job-alert-card .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge.active {
+    background: #10b981;
+    color: white;
+}
+
+.badge.paused {
+    background: #f59e0b;
+    color: white;
+}
+
+/* Application Status */
+.application-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-applied {
+    background: #3b82f6;
+    color: white;
+}
+
+.status-reviewed {
+    background: #f59e0b;
+    color: white;
+}
+
+.status-interview {
+    background: #10b981;
+    color: white;
+}
+
+.status-rejected {
+    background: #ef4444;
+    color: white;
+}
+
+.status-offer {
+    background: #8b5cf6;
+    color: white;
+}
+
+/* Skill Assessment Cards */
+.skill-assessment-card {
+    background: var(--light-gray);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.skill-assessment-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.skill-assessment-card h4 {
+    margin-bottom: 10px;
+    color: var(--dark);
+}
+
+.skill-assessment-card p {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
+
+.skill-assessment-card .btn {
+    width: 100%;
+}
+
+/* Company Review Cards */
+.company-review-card {
+    background: var(--light-gray);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 15px;
+}
+
+.company-review-card .company-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.company-review-card .company-logo {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.company-review-card .rating {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 10px;
+}
+
+.company-review-card .rating i {
+    color: #fbbf24;
+}
+
+.company-review-card .review-text {
+    color: var(--gray);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.company-review-card .reviewer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.company-review-card .reviewer img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+}
+
+/* Form Actions Sticky */
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 20px 0;
+    border-top: 1px solid var(--light-gray);
+    z-index: 5;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    #profileModal .modal-box {
+        padding: 1rem;
+    }
+    
+    .profile-section {
+        padding: 15px;
+    }
+    
+    .dynamic-field {
+        padding: 15px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Tooltip Styles */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    background: var(--dark);
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+[data-tooltip]:hover:before {
+    opacity: 1;
+    visibility: visible;
+    bottom: 120%;
+}
+
+/* Loading Skeleton */
+.skeleton {
+    background: linear-gradient(90deg, var(--light-gray) 25%, #e2e8f0 50%, var(--light-gray) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--gray);
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    margin-bottom: 10px;
+    color: var(--dark);
+}
+
+.empty-state p {
+    color: var(--gray);
+    margin-bottom: 20px;
+}
+
+/* Success Animation */
+@keyframes checkmark {
+    0% {
+        transform: scale(0);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.checkmark-animation {
+    animation: checkmark 0.5s ease forwards;
+}
